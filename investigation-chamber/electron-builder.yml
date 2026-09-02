@@ -18,7 +18,7 @@ win:
     - target: nsis
       arch:
         - x64
-  artifactName: '${productName}-Setup-${version}.${ext}'
+  artifactName: 'InvestigationChamber-Setup-${version}.${ext}'
 
 nsis:
   oneClick: false
