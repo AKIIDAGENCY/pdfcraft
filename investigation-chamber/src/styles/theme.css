@@ -1,0 +1,78 @@
+:root {
+  --font-ui: 'Segoe UI', 'Cairo', 'Tahoma', 'Arial', sans-serif;
+
+  /* Light judicial theme */
+  --color-bg: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eef1f4;
+  --color-border: #d9dee3;
+  --color-text: #1b2430;
+  --color-text-muted: #5b6773;
+  --color-accent: #0b5d3b; /* judicial green */
+  --color-accent-contrast: #ffffff;
+  --color-gold: #a97b2f;
+
+  --color-alert-green-bg: #e6f4ea;
+  --color-alert-green-fg: #1e7d34;
+  --color-alert-orange-bg: #fff2df;
+  --color-alert-orange-fg: #b5690b;
+  --color-alert-red-bg: #fde6e6;
+  --color-alert-red-fg: #c81e1e;
+  --color-alert-overdue-bg: #3a0d0d;
+  --color-alert-overdue-fg: #ffffff;
+  --color-alert-inactive-bg: #eceff1;
+  --color-alert-inactive-fg: #67737d;
+
+  --shadow-1: 0 1px 3px rgba(20, 30, 40, 0.08), 0 1px 2px rgba(20, 30, 40, 0.06);
+  --shadow-2: 0 4px 14px rgba(20, 30, 40, 0.12);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #0f1418;
+    --color-surface: #161d24;
+    --color-surface-alt: #1d252d;
+    --color-border: #2b3541;
+    --color-text: #e7edf2;
+    --color-text-muted: #9fb0bd;
+    --color-accent: #2fa66f;
+    --color-accent-contrast: #06120c;
+    --color-gold: #d3a24d;
+
+    --color-alert-green-bg: #133620;
+    --color-alert-green-fg: #5fd68a;
+    --color-alert-orange-bg: #3a2a10;
+    --color-alert-orange-fg: #f0a94e;
+    --color-alert-red-bg: #3a1414;
+    --color-alert-red-fg: #ff7373;
+    --color-alert-overdue-bg: #ff2d2d;
+    --color-alert-overdue-fg: #1a0000;
+    --color-alert-inactive-bg: #232c34;
+    --color-alert-inactive-fg: #8695a1;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #0f1418;
+  --color-surface: #161d24;
+  --color-surface-alt: #1d252d;
+  --color-border: #2b3541;
+  --color-text: #e7edf2;
+  --color-text-muted: #9fb0bd;
+  --color-accent: #2fa66f;
+  --color-accent-contrast: #06120c;
+  --color-gold: #d3a24d;
+
+  --color-alert-green-bg: #133620;
+  --color-alert-green-fg: #5fd68a;
+  --color-alert-orange-bg: #3a2a10;
+  --color-alert-orange-fg: #f0a94e;
+  --color-alert-red-bg: #3a1414;
+  --color-alert-red-fg: #ff7373;
+  --color-alert-overdue-bg: #ff2d2d;
+  --color-alert-overdue-fg: #1a0000;
+  --color-alert-inactive-bg: #232c34;
+  --color-alert-inactive-fg: #8695a1;
+}

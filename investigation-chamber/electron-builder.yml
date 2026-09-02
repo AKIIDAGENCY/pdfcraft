@@ -1,0 +1,31 @@
+appId: dz.gov.pole-penal-specialise.investigation-chamber
+productName: نظام إدارة غرفة التحقيق
+copyright: القطب الجزائي الوطني لمكافحة الإرهاب والجريمة المنظمة عبر الوطنية
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: '${productName}-Setup-${version}.${ext}'
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  language: '1025' # Arabic
+
+asarUnpack:
+  - '**/*.node'
