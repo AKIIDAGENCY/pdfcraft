@@ -1,0 +1,196 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:InvestigationRoom.Models"
+        xmlns:conv="using:InvestigationRoom.Converters"
+        x:Class="InvestigationRoom.Views.MainWindow"
+        Title="غرفة التحقيق"
+        Width="1300" Height="820"
+        MinWidth="1024" MinHeight="620"
+        FlowDirection="RightToLeft">
+
+    <DockPanel>
+
+        <Border DockPanel.Dock="Bottom" Padding="12,6" BorderThickness="0,1,0,0" BorderBrush="#E0E0E0">
+            <TextBlock Text="{Binding StatusMessage}" Classes="hint"/>
+        </Border>
+
+        <TabControl>
+
+            <TabItem Header="ملفات القضايا">
+                <Grid ColumnDefinitions="280,4,*,4,380">
+
+                    <!-- Column 1: case files -->
+                    <Border Grid.Column="0" Padding="12" BorderThickness="0,0,1,0" BorderBrush="#E0E0E0">
+                        <Grid RowDefinitions="Auto,Auto,*,Auto">
+                            <TextBlock Grid.Row="0" Text="ملفات القضايا" Classes="section-title" Margin="0,0,0,10"/>
+                            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                                <TextBox Grid.Column="0" Text="{Binding NewCaseTitle}" PlaceholderText="اسم/رقم الملف الجديد"/>
+                                <Button Grid.Column="1" Content="إضافة" Classes="primary" Command="{Binding AddCaseCommand}" Margin="6,0,0,0"/>
+                            </Grid>
+                            <ListBox Grid.Row="2" ItemsSource="{Binding Cases}" SelectedItem="{Binding SelectedCase}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Defendants.Count, StringFormat='{}{0} متهم'}" Classes="hint"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Grid.Row="3" Content="حذف الملف المحدد" Classes="danger-flat"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Margin="0,10,0,0" Click="OnDeleteCaseClick"/>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Column="1" Background="#E0E0E0"/>
+
+                    <!-- Column 2: defendants of the selected case -->
+                    <Border Grid.Column="2" Padding="12">
+                        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" IsEnabled="{Binding HasSelectedCase}">
+                            <TextBlock Grid.Row="0" Classes="section-title"
+                                       Text="{Binding SelectedCase.Title, StringFormat='المتهمون - {0}', FallbackValue=المتهمون, TargetNullValue=المتهمون}"/>
+                            <TextBox Grid.Row="1" Text="{Binding DefendantFilterText}"
+                                     PlaceholderText="بحث بالاسم أو التهمة أو رقم الهوية..." Margin="0,10,0,10"/>
+                            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                                <TextBox Grid.Column="0" Text="{Binding NewDefendantName}" PlaceholderText="اسم متهم جديد"/>
+                                <Button Grid.Column="1" Content="+ إضافة متهم" Classes="primary"
+                                        Command="{Binding AddDefendantCommand}" Margin="6,0,0,0"/>
+                            </Grid>
+                            <ListBox Grid.Row="3" ItemsSource="{Binding FilteredDefendants}" SelectedItem="{Binding SelectedDefendant}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="12,*,Auto" Margin="0,4">
+                                            <Ellipse Grid.Column="0" Width="10" Height="10" VerticalAlignment="Center"
+                                                     Fill="{Binding HasOverdue, Converter={x:Static conv:OverdueToBrushConverter.Instance}}"/>
+                                            <StackPanel Grid.Column="1" Margin="8,0">
+                                                <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Charge}" Classes="hint" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding ProgressLabel}" VerticalAlignment="Center" Classes="hint"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Grid.Row="4" Content="حذف المتهم المحدد" Classes="danger-flat"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Margin="0,10,0,0" Click="OnDeleteDefendantClick"/>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Column="3" Background="#E0E0E0"/>
+
+                    <!-- Column 3: selected defendant's procedure checklist -->
+                    <Grid Grid.Column="4" Margin="12">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*"
+                              IsVisible="{Binding HasSelectedDefendant}">
+                            <TextBox Grid.Row="0" Text="{Binding SelectedDefendant.FullName}"
+                                     FontWeight="Bold" FontSize="16" PlaceholderText="اسم المتهم" Margin="0,0,0,6"/>
+                            <Grid Grid.Row="1" ColumnDefinitions="*,*" Margin="0,0,0,6">
+                                <TextBox Grid.Column="0" Text="{Binding SelectedDefendant.Charge}" PlaceholderText="التهمة" Margin="0,0,4,0"/>
+                                <TextBox Grid.Column="1" Text="{Binding SelectedDefendant.NationalId}" PlaceholderText="رقم الهوية/البطاقة" Margin="4,0,0,0"/>
+                            </Grid>
+                            <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto" Margin="0,0,0,6">
+                                <TextBlock Grid.Column="0" Text="تاريخ التوقيف:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <DatePicker Grid.Column="1" SelectedDate="{Binding SelectedDefendant.ArrestDate}"/>
+                            </Grid>
+                            <TextBox Grid.Row="3" Text="{Binding SelectedDefendant.Notes}" PlaceholderText="ملاحظات عامة عن المتهم"
+                                     AcceptsReturn="True" Height="50" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <Separator Grid.Row="4" Margin="0,4"/>
+                            <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*" Margin="0,4,0,6">
+                                <Button Grid.Column="0" Content="تطبيق قائمة الإجراءات" Classes="primary"
+                                        Command="{Binding ApplyTemplateToSelectedDefendantCommand}"/>
+                                <Button Grid.Column="1" Content="إدارة القائمة" Margin="6,0,0,0" Click="OnManageTemplateClick"/>
+                            </Grid>
+                            <Grid Grid.Row="6" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                                <TextBox Grid.Column="0" Text="{Binding NewAdHocProcedureName}" PlaceholderText="إضافة إجراء خاص بهذا المتهم..."/>
+                                <Button Grid.Column="1" Content="+" Command="{Binding AddAdHocProcedureCommand}" Margin="6,0,0,0"/>
+                            </Grid>
+                            <TextBlock Grid.Row="7" Text="الإجراءات المطلوبة" Classes="section-title" Margin="0,6,0,4"/>
+                            <ScrollViewer Grid.Row="8">
+                                <ListBox ItemsSource="{Binding SelectedDefendant.Procedures}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="8" Margin="0,3" CornerRadius="4"
+                                                    Background="{Binding IsOverdue, Converter={x:Static conv:OverdueBackgroundConverter.Instance}}"
+                                                    BorderBrush="#E0E0E0" BorderThickness="1">
+                                                <Grid ColumnDefinitions="130,*,Auto,Auto" RowDefinitions="Auto,Auto">
+                                                    <ComboBox Grid.Row="0" Grid.Column="0"
+                                                              ItemsSource="{x:Static models:ProcedureStatusValues.All}"
+                                                              SelectedItem="{Binding Status}">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Converter={x:Static conv:StatusToArabicConverter.Instance}}"/>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name}"
+                                                             Margin="6,0" VerticalAlignment="Center"/>
+                                                    <DatePicker Grid.Row="0" Grid.Column="2" SelectedDate="{Binding DueDate}"/>
+                                                    <Button Grid.Row="0" Grid.Column="3" Content="حذف" Classes="danger-flat"
+                                                            Click="OnRemoveProcedureClick" Tag="{Binding}" Margin="4,0,0,0"/>
+                                                    <TextBox Grid.Row="1" Grid.ColumnSpan="4" Text="{Binding Notes}"
+                                                             PlaceholderText="ملاحظات على هذا الإجراء" Margin="0,6,0,0"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <TextBlock Text="اختر متهمًا من القائمة الوسطى لعرض إجراءاته وتعديلها"
+                                   IsVisible="{Binding !HasSelectedDefendant}" Classes="hint" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"/>
+                    </Grid>
+
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="المتابعة">
+                <Grid RowDefinitions="Auto,Auto,*" Margin="16">
+                    <TextBlock Grid.Row="0" Text="لوحة متابعة الإجراءات المعلّقة" Classes="section-title" Margin="0,0,0,10"/>
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                        <CheckBox Grid.Column="0" Content="عرض كل الملفات (وليس الملف المحدد فقط)"
+                                  IsChecked="{Binding ShowAllCasesInPending}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding PendingCountLabel}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </Grid>
+                    <ScrollViewer Grid.Row="2">
+                        <ItemsControl ItemsSource="{Binding PendingItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10" Margin="0,3" CornerRadius="4"
+                                            Background="{Binding IsOverdue, Converter={x:Static conv:OverdueBackgroundConverter.Instance}}"
+                                            BorderBrush="#E0E0E0" BorderThickness="1">
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding ProcedureName}" FontWeight="SemiBold"/>
+                                                <TextBlock Classes="hint">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} — {1}">
+                                                            <Binding Path="CaseTitle"/>
+                                                            <Binding Path="DefendantName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding DueDate, StringFormat='{}{0:yyyy-MM-dd}'}"
+                                                       VerticalAlignment="Center" Margin="10,0"/>
+                                            <TextBlock Grid.Column="2" Text="متجاوز الموعد" Foreground="#D32F2F" FontWeight="Bold"
+                                                       VerticalAlignment="Center" IsVisible="{Binding IsOverdue}" Margin="0,0,10,0"/>
+                                            <Button Grid.Column="3" Content="تم ✓" Classes="primary"
+                                                    Click="OnMarkDoneClick" Tag="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+
+    </DockPanel>
+
+</Window>

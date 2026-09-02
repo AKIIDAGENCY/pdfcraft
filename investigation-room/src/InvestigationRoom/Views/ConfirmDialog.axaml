@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="InvestigationRoom.Views.ConfirmDialog"
+        Title="تأكيد"
+        Width="420" Height="180"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        FlowDirection="RightToLeft"
+        SizeToContent="Height">
+    <Grid Margin="20" RowDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Row="0" x:Name="TitleText" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+        <TextBlock Grid.Row="1" x:Name="MessageText" TextWrapping="Wrap"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Spacing="8" Margin="0,20,0,0">
+            <Button x:Name="YesButton" Content="نعم، متابعة" Classes="danger" Click="OnYesClick"/>
+            <Button x:Name="NoButton" Content="إلغاء" Click="OnNoClick"/>
+        </StackPanel>
+    </Grid>
+</Window>
