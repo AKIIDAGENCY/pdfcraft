@@ -2,6 +2,7 @@ import {
   DETENTION,
   DETENTION_ALERT_THRESHOLDS_DAYS,
 } from '../legal/articles';
+import { normalizeZero } from './mathUtils';
 import type { CrimeSeverityTier, DetentionAlertLevel, DetentionEvent } from '../types';
 
 export interface DetentionTimelineSegment {
@@ -161,7 +162,7 @@ export function computeDetentionStatus(
   const currentExpirationDate = currentSegment ? currentSegment.endDate : null;
 
   const daysRemaining = currentExpirationDate
-    ? Math.ceil((currentExpirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    ? normalizeZero(Math.ceil((currentExpirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : null;
 
   const judgeRenewalsRemaining = Math.max(0, maxJudge - judgeRenewalsUsed);

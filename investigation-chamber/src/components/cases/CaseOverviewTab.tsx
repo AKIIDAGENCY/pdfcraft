@@ -1,6 +1,6 @@
 import { api } from '../../lib/api';
 import { useAsync } from '../../hooks/useAsync';
-import { formatDate, formatMoney } from '../../lib/format';
+import { formatDate, formatMoney, seizureStatusLabel } from '../../lib/format';
 import type { Case, InfiltrationRecord, InterceptionRecord, Judge, ProtectedWitness, SeizureRecord } from '../../../shared/types';
 
 export default function CaseOverviewTab({ caseId }: { caseId: string }) {
@@ -102,7 +102,7 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
                   <tr key={s.id}>
                     <td style={{ fontSize: 12.5 }}>{s.assetDescription}</td>
                     <td style={{ fontSize: 12.5 }}>{s.estimatedValue ? formatMoney(s.estimatedValue, s.currency) : '—'}</td>
-                    <td style={{ fontSize: 12.5 }}>{s.status}</td>
+                    <td style={{ fontSize: 12.5 }}>{seizureStatusLabel(s.status)}</td>
                   </tr>
                 ))}
               </tbody>

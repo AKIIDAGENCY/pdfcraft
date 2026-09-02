@@ -5,7 +5,7 @@ import CustodyBadge from '../components/common/CustodyBadge';
 import AlertBadge from '../components/common/AlertBadge';
 import { detentionEventLabel, formatDate, roleLabel } from '../lib/format';
 import { JUDICIAL_CONTROL_MEASURES } from '../../shared/legal/articles';
-import type { Charge, Defendant, DetentionEvent, InterrogationRecord, JudicialControlMeasureRecord, Lawyer } from '../../shared/types';
+import type { Charge, Defendant, DetentionEvent, InterrogationRecord, Judge, JudicialControlMeasureRecord, Lawyer } from '../../shared/types';
 
 const MEASURE_LABEL = new Map<string, string>(JUDICIAL_CONTROL_MEASURES.map((m) => [m.code, m.labelAr]));
 
@@ -25,6 +25,7 @@ export default function DefendantProfilePage() {
     [defendantId],
   );
   const { data: lawyers } = useAsync<Lawyer[]>(() => api.lawyers.list(), []);
+  const { data: judges } = useAsync<Judge[]>(() => api.judges.list(), []);
 
   const severityTier = charges?.[0]?.severityTier ?? 'ordinary';
   const { data: detentionStatus } = useAsync(
@@ -35,6 +36,11 @@ export default function DefendantProfilePage() {
   if (!defendant) return <div className="text-muted">جارٍ التحميل…</div>;
 
   const lawyerNames = defendant.lawyerIds.map((id) => lawyers?.find((l) => l.id === id)?.fullName ?? '—');
+  // Detention events store the ordering authority as a judge id where known
+  // (e.g. seeded data), or a free-text authority name otherwise (e.g. bulk
+  // Chamber-of-Accusation actions from the defendant matrix) — resolve the
+  // id form to a name, and fall back to displaying the raw value as-is.
+  const orderedByLabel = (orderedBy: string) => judges?.find((j) => j.id === orderedBy)?.fullName ?? orderedBy;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -114,7 +120,7 @@ export default function DefendantProfilePage() {
                   <td>{detentionEventLabel(e.type)}</td>
                   <td>{formatDate(e.startDate)}</td>
                   <td>{e.durationMonths} أشهر</td>
-                  <td className="text-muted">{e.orderedBy}</td>
+                  <td className="text-muted">{orderedByLabel(e.orderedBy)}</td>
                   <td className="text-muted">{e.notificationDate ? formatDate(e.notificationDate) : '—'}</td>
                 </tr>
               ))}

@@ -62,6 +62,16 @@ export function detentionEventLabel(type: string): string {
   return DETENTION_EVENT_LABELS[type] ?? type;
 }
 
+const SEIZURE_STATUS_LABELS: Record<string, string> = {
+  seized: 'محجوز',
+  frozen: 'مجمد',
+  released: 'مفرج عنه',
+  confiscated: 'مصادر',
+};
+export function seizureStatusLabel(status: string): string {
+  return SEIZURE_STATUS_LABELS[status] ?? status;
+}
+
 const ALERT_LABELS: Record<string, string> = {
   green: 'ضمن الآجال',
   orange: 'يقترب من الانتهاء',

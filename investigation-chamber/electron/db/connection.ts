@@ -51,6 +51,19 @@ function getOrCreateEncryptionKey(): string {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { safeStorage } = require('electron') as typeof import('electron');
     if (!safeStorage.isEncryptionAvailable()) {
+      // Narrow, explicit-opt-in escape hatch for headless Linux CI/dev
+      // containers with no OS keyring service at all (no DPAPI-equivalent
+      // exists there to fall back to). Requires an env var no production
+      // Windows install would ever set, so default behavior stays fail-closed.
+      if (process.env.IC_ALLOW_INSECURE_DEV_KEY === '1') {
+        console.warn(
+          '[investigation-chamber] IC_ALLOW_INSECURE_DEV_KEY=1: OS keychain unavailable, using an UNENCRYPTED-AT-REST dev key file. Never use this in production.',
+        );
+        if (fs.existsSync(keyFilePath)) return fs.readFileSync(keyFilePath, 'utf-8').trim();
+        const devKey = crypto.randomBytes(32).toString('hex');
+        fs.writeFileSync(keyFilePath, devKey, { mode: 0o600 });
+        return devKey;
+      }
       throw new Error(
         'نظام تشفير التخزين الآمن (OS keychain) غير متاح على هذا الجهاز. لا يمكن فتح قاعدة بيانات مشفرة دون ذلك.',
       );

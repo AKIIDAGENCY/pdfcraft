@@ -8,7 +8,7 @@
 import { generateMockCase } from '../../shared/data/mockCaseGenerator';
 import { getDb, closeDb } from './connection';
 
-function seed(): void {
+export function runSeed(closeAfter = true): void {
   const bundle = generateMockCase();
   const db = getDb();
 
@@ -226,7 +226,11 @@ function seed(): void {
   console.log(`  ${bundle.interceptions.length} interceptions, ${bundle.seizures.length} seizures,`);
   console.log(`  ${bundle.protectedWitnesses.length} protected witnesses, ${bundle.networkLinks.length} network links.`);
 
-  closeDb();
+  if (closeAfter) closeDb();
 }
 
-seed();
+// Only auto-run when this file is executed directly (`npm run seed`), not
+// when imported as a module (e.g. by a test harness reusing runSeed()).
+if (require.main === module) {
+  runSeed();
+}

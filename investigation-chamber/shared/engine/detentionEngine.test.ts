@@ -39,6 +39,17 @@ describe('computeDetentionStatus — Art. 204 base term', () => {
     expect(status.daysRemaining).toBe(21);
   });
 
+  it('never reports negative-zero days remaining (Intl.NumberFormat renders -0 with a stray minus sign)', () => {
+    // Expiration is 10 hours before "now" -> raw diff is a small negative
+    // fraction; Math.ceil() of that is -0, which must be normalized to 0.
+    const expiration = new Date('2026-05-01T00:00:00Z');
+    const now = new Date(expiration.getTime() + 10 * 60 * 60 * 1000);
+    const events = [mkEvent({ type: 'initial_order', startDate: '2026-01-01T00:00:00Z' })];
+    const status = computeDetentionStatus(events, 'ordinary', {}, now);
+    expect(Object.is(status.daysRemaining, -0)).toBe(false);
+    expect(status.daysRemaining).toBe(0);
+  });
+
   it('turns red within 7 days of expiration', () => {
     const now = new Date('2026-04-27T00:00:00Z'); // 4 days before 2026-05-01
     const events = [mkEvent({ type: 'initial_order', startDate: '2026-01-01T00:00:00Z' })];

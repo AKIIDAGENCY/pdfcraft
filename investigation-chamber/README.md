@@ -41,7 +41,8 @@ electron/                 Main process (Node, compiled to dist-electron/electron
     schema.sql               Full encrypted schema (14 tables)
     connection.ts             Encrypted DB connection + key management
     repository.ts             Typed data access + server-side aggregate queries
-    seed.ts                   `npm run seed` — loads the mock case
+    seed.ts                   Mock-case insertion logic (runSeed)
+  seedRunner.ts              Electron entry point for `npm run seed`
 
 src/                      Renderer (React)
   pages/                    Dashboard, case list, case detail (tabbed), defendant profile
@@ -52,8 +53,8 @@ src/                      Renderer (React)
 ## Running it
 
 ```bash
-npm install
-npm run seed        # populates the local encrypted DB with the 60-defendant demo case
+npm install          # postinstall rebuilds the native SQLite driver against Electron's ABI
+npm run seed          # launches Electron headlessly, populates the encrypted DB with the 60-defendant demo case
 npm run dev:electron  # starts Vite + compiles the main process + launches Electron
 ```
 
@@ -69,12 +70,49 @@ Run the test suite:
 npm test
 ```
 
-> This environment has no display server, so the Electron window itself
-> could not be visually screenshotted here — the renderer (`vite build`),
-> the main process (`tsc -p electron/tsconfig.json`), and the encrypted
-> SQLite layer (`npm run seed`, which writes and re-reads a real
-> AES-256-encrypted `.db` file end-to-end) were all built and exercised
-> directly to validate the pipeline.
+### A note on the native SQLite driver
+
+`better-sqlite3-multiple-ciphers` is a native (compiled) module, and it has
+to be built against whichever Node/V8 ABI will load it. Electron ships its
+own Node build with a different ABI than the `node`/`npm` on your machine,
+so `npm install`'s `postinstall` step runs `electron-rebuild` to target
+Electron's ABI — this is why `npm run seed` (and the app itself) run
+through the real Electron binary rather than plain Node/tsx: a plain-Node
+script would try to load the Electron-targeted binary and crash with an
+ABI-mismatch error. If you ever need to run DB code under plain Node (e.g.
+a future test that touches the database directly), run `npm rebuild
+better-sqlite3-multiple-ciphers` first to swap it back.
+
+### What's actually been verified
+
+The full app was built, seeded, and driven end-to-end in this environment
+using Electron under Xvfb (a virtual X server) — not just typechecked. That
+run caught and fixed three real bugs before they'd have reached a real
+judge's screen:
+
+- A `Math.ceil` on a near-zero negative day count produced `-0`, which
+  `Intl.NumberFormat` rendered with a stray minus sign ("0- يوم متبقٍ")
+  on every red-alert badge. Fixed in `shared/engine/mathUtils.ts`
+  (`normalizeZero`), applied everywhere a deadline is computed, and
+  covered by a regression test.
+- Seizure status (`seized`/`frozen`/`confiscated`) was rendered as raw
+  English inside an otherwise fully Arabic case-overview table. Fixed
+  with `seizureStatusLabel` in `src/lib/format.ts`.
+- The detention-timeline table showed the ordering judge's raw internal
+  ID instead of their name. Fixed by resolving `orderedBy` against the
+  judges list in `DefendantProfilePage`.
+- The native SQLite module ABI-mismatch (above) — found only by actually
+  launching the compiled app, since `npm test`/`tsc` never touch the
+  native binary.
+
+Screenshots aren't checked into the repo (they were a disposable
+verification artifact, produced by a throwaway Electron entry point that
+seeded data, drove every screen and tab, and captured each one — not part
+of the shipped app), but every screen — dashboard, case list, case
+overview, the 60-row virtualized defendant matrix, the force-directed
+network graph, the document generator with a live PDF-ready preview, and
+the defendant profile with its detention countdown — was confirmed
+rendering real seeded data correctly, in RTL, before this was called done.
 
 ## Legal-compliance mapping (Law No. 25-14)
 
@@ -109,12 +147,17 @@ npm test
   defendant qualifies — this is called out explicitly in
   `shared/engine/detentionEngine.ts` and should be confirmed against the
   Ministry of Justice's own instructions before production use.
-- **Encryption key custody outside Electron** (e.g. running `npm run
-  seed` via `tsx`): there is no OS keychain bridge in a plain Node
-  process, so `electron/db/connection.ts` falls back to a locally-stored
-  256-bit key file under `dev-data/` — clearly marked dev/test-only in
-  the code. Inside the packaged Electron app, the key is always sealed
-  through `safeStorage`.
+- **Encryption key custody without an OS keychain:** `getDb()` normally
+  requires `safeStorage.isEncryptionAvailable()` (DPAPI on Windows —
+  always available there) and throws otherwise. Two narrow, explicit dev
+  escape hatches exist for environments with no keychain at all: running
+  outside Electron entirely (plain Node/tsx — e.g. a future direct-DB
+  test) falls back to a local key file under `dev-data/`; running inside
+  Electron on a keychain-less host (e.g. a minimal Linux container with no
+  `dbus`/`libsecret`, as this sandbox turned out to be) requires setting
+  `IC_ALLOW_INSECURE_DEV_KEY=1`, which logs a loud warning and is never
+  something a production Windows install would set. Default behavior on a
+  real machine stays fail-closed either way.
 - This is a from-scratch build; it has not been reviewed by Ministry of
   Justice counsel. Treat the legal figures as a faithful implementation
   of the brief, not as independently verified legislative text.

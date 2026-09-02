@@ -6,6 +6,7 @@
   "main": "dist-electron/electron/main.js",
   "author": "National Specialized Criminal Pole",
   "scripts": {
+    "postinstall": "electron-rebuild -f -w better-sqlite3-multiple-ciphers",
     "dev": "vite",
     "dev:electron": "concurrently -k \"vite\" \"tsc -p electron/tsconfig.json --outDir dist-electron --watch\" \"wait-on tcp:5173 dist-electron/electron/main.js && electron .\"",
     "build:renderer": "tsc -p tsconfig.json --noEmit && vite build",
@@ -15,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p electron/tsconfig.json --noEmit",
-    "seed": "tsx electron/db/seed.ts"
+    "seed": "npm run build:electron && electron dist-electron/electron/seedRunner.js"
   },
   "dependencies": {
     "better-sqlite3-multiple-ciphers": "^11.6.0",
@@ -29,6 +30,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@tanstack/react-virtual": "^3.10.9",
     "@types/better-sqlite3": "^7.6.11",
     "@types/d3-force": "^3.0.10",

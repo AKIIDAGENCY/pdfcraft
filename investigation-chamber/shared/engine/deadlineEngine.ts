@@ -3,6 +3,7 @@ import {
   PROSECUTION_REVIEW_WINDOW_DAYS,
   INTERCEPTION,
 } from '../legal/articles';
+import { normalizeZero } from './mathUtils';
 import type { DetentionAlertLevel, InterceptionRecord } from '../types';
 
 function addDays(date: Date, days: number): Date {
@@ -35,7 +36,7 @@ function alertFromDays(daysRemaining: number): DetentionAlertLevel {
 /** Art. 268 — 3-day appeal window for the defendant / civil party, from the notification date. */
 export function computeAppealDeadline(notificationDate: Date, now: Date = new Date()): StatutoryDeadline {
   const dueDate = addDays(notificationDate, APPEAL_WINDOW_DAYS);
-  const daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = normalizeZero(Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   return {
     label: 'أجل الاستئناف',
     articleReferences: ['268'],
@@ -51,7 +52,7 @@ export function computeProsecutionReviewDeadline(
   now: Date = new Date(),
 ): StatutoryDeadline {
   const dueDate = addDays(fileReceivedDate, PROSECUTION_REVIEW_WINDOW_DAYS);
-  const daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = normalizeZero(Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   return {
     label: 'أجل مراجعة النيابة العامة',
     articleReferences: ['143', '258'],
@@ -76,7 +77,7 @@ export function computeInterceptionStatus(
 ): InterceptionStatus {
   const cappedDuration = Math.min(record.durationMonths, INTERCEPTION.MAX_DURATION_MONTHS);
   const expirationDate = addMonths(new Date(record.startDate), cappedDuration);
-  const daysRemaining = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = normalizeZero(Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   return {
     record,
     expirationDate,
