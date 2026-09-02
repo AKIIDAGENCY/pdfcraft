@@ -1,6 +1,8 @@
 appId: dz.gov.pole-penal-specialise.investigation-chamber
 productName: نظام إدارة غرفة التحقيق
 copyright: القطب الجزائي الوطني لمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية
+# No auto-update feature in this app, so skip generating update-manifest metadata.
+publish: null
 
 directories:
   output: release
@@ -16,7 +18,6 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: build/icon.ico
   artifactName: '${productName}-Setup-${version}.${ext}'
 
 nsis:
