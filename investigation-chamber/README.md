@@ -3,7 +3,7 @@
 Standalone Windows desktop application for the Investigation Chamber (غرفة
 التحقيق) of the National Specialized Criminal Pole for Countering Terrorism
 and Transnational Organized Crime (القطب الجزائي الوطني لمكافحة الإرهاب
-والجريمة المنظمة عبر الوطنية), built strictly against Algeria's Code of
+و الجريمة المنظمة عبر الوطنية), built strictly against Algeria's Code of
 Criminal Procedure, Law No. 25-14.
 
 ## Stack

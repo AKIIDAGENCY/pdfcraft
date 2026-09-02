@@ -112,7 +112,7 @@ export function generateMockCase(seed = 25141, now: Date = new Date()): MockCase
     id: uid('case'),
     caseNumber: '2025/إره‌-عبر وطني/147',
     registrationDate: isoDate(registrationDate),
-    title: 'قضية تمويل الإرهاب والجريمة المنظمة عبر الوطنية — شبكة "الأطلس"',
+    title: 'قضية تمويل الإرهاب و الجريمة المنظمة عبر الوطنية — شبكة "الأطلس"',
     legalQualifications: [
       'تمويل الإرهاب',
       'الانتماء إلى جماعة إرهابية عبر الحدود',

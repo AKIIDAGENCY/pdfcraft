@@ -1,7 +1,7 @@
 {
   "name": "investigation-chamber",
   "version": "1.0.0",
-  "description": "نظام إدارة غرفة التحقيق - القطب الجزائي الوطني لمكافحة الإرهاب والجريمة المنظمة عبر الوطنية",
+  "description": "نظام إدارة غرفة التحقيق - القطب الجزائي الوطني لمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية",
   "private": true,
   "main": "dist-electron/electron/main.js",
   "author": "National Specialized Criminal Pole",

@@ -90,7 +90,7 @@ export async function buildOrderDocx(code: DocumentTemplateCode, ctx: OrderConte
         children: [
           para('الجمهورية الجزائرية الديمقراطية الشعبية', { bold: true, size: 26 }),
           para('وزارة العدل', { bold: true }),
-          para('القطب الجزائي الوطني المتخصص بمكافحة الإرهاب والجريمة المنظمة عبر الوطنية', { bold: true }),
+          para('القطب الجزائي الوطني المتخصص بمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية', { bold: true }),
           para('غرفة التحقيق', { bold: true }),
           new Paragraph({ text: '', spacing: { after: 200 } }),
           para(title, { bold: true, underline: true, size: 30 }),

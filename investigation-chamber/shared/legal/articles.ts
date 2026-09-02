@@ -1,6 +1,6 @@
 /**
  * Statutory reference constants — Algerian Code of Criminal Procedure,
- * Law No. 25-14 (القطب الجزائي الوطني لمكافحة الإرهاب والجريمة المنظمة عبر الوطنية).
+ * Law No. 25-14 (القطب الجزائي الوطني لمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية).
  *
  * Centralizing the raw figures here means the engine and the UI both cite
  * the same numbers, and a legal-text amendment only has to change one file.
