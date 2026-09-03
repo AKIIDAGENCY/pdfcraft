@@ -1,10 +1,11 @@
 import { api } from '../../lib/api';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate, formatMoney, seizureStatusLabel } from '../../lib/format';
+import ErrorState from '../common/ErrorState';
 import type { Case, InfiltrationRecord, InterceptionRecord, Judge, ProtectedWitness, SeizureRecord } from '../../../shared/types';
 
 export default function CaseOverviewTab({ caseId }: { caseId: string }) {
-  const { data: theCase } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
+  const { data: theCase, error, reload } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
   const { data: judges } = useAsync<Judge[]>(() => api.judges.list(), []);
   const { data: interceptions } = useAsync<InterceptionRecord[]>(() => api.interceptions.listByCase(caseId), [caseId]);
   const { data: infiltrations } = useAsync<InfiltrationRecord[]>(() => api.infiltrations.listByCase(caseId), [caseId]);
@@ -12,6 +13,7 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
   const { data: witnesses } = useAsync<ProtectedWitness[]>(() => api.witnesses.listByCase(caseId), [caseId]);
   const { data: entities } = useAsync(() => api.entities.listByCase(caseId), [caseId]);
 
+  if (error) return <ErrorState error={error} onRetry={reload} />;
   if (!theCase) return <div className="text-muted">جارٍ التحميل…</div>;
 
   const primaryJudge = judges?.find((j) => j.id === theCase.primaryInvestigatingJudgeId);

@@ -98,14 +98,29 @@ export function getDb(): Database.Database {
   const db = new Database(dbPath);
   const key = getOrCreateEncryptionKey();
 
-  // AES-256 page encryption via SQLCipher-compatible cipher.
+  // AES-256 page encryption via SQLCipher-compatible cipher. Order matters:
+  // select the cipher provider, set the key (which opens/initializes the
+  // encrypted header), *then* the hardening pragmas — setting them before
+  // `key` is a no-op on some SQLCipher builds since there is no active
+  // cipher context yet to configure.
   db.pragma("cipher='sqlcipher'");
+  db.pragma(`key='${key}'`);
   db.pragma('cipher_page_size=4096');
   db.pragma("cipher_hmac_algorithm='HMAC_SHA512'");
-  db.pragma(`key='${key}'`);
 
-  // Sanity check: a bad/missing key makes any query throw immediately.
-  db.pragma('cipher_integrity_check');
+  // Touch the database now, not lazily: a wrong/corrupt key doesn't fail on
+  // `key=` itself (that only sets the context) — it fails on the first real
+  // read, which for a brand-new file is this table lookup. Surfacing that
+  // now, with a clear message, beats an opaque failure deep in some later
+  // unrelated query.
+  try {
+    db.pragma('cipher_integrity_check');
+    db.prepare("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1").get();
+  } catch (err) {
+    throw new Error(
+      `تعذر فتح قاعدة البيانات المشفرة (مفتاح غير صالح أو ملف تالف): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');

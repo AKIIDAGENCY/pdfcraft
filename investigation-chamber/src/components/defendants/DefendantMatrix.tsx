@@ -6,6 +6,7 @@ import { useAsync } from '../../hooks/useAsync';
 import CustodyBadge from '../common/CustodyBadge';
 import AlertBadge from '../common/AlertBadge';
 import { roleLabel } from '../../lib/format';
+import ErrorState from '../common/ErrorState';
 import type { CustodyStatus, DefendantRole, DetentionAlertLevel } from '../../../shared/types';
 
 interface MatrixRow {
@@ -30,7 +31,7 @@ interface MatrixRow {
 const ROW_HEIGHT = 46;
 
 export default function DefendantMatrix({ caseId }: { caseId: string }) {
-  const { data: rows, loading, reload } = useAsync<MatrixRow[]>(() => api.defendants.matrix(caseId), [caseId]);
+  const { data: rows, loading, error, reload } = useAsync<MatrixRow[]>(() => api.defendants.matrix(caseId), [caseId]);
   const [search, setSearch] = useState('');
   const [custodyFilter, setCustodyFilter] = useState<'all' | CustodyStatus>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | DefendantRole>('all');
@@ -154,6 +155,7 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
     }
   }
 
+  if (error) return <ErrorState error={error} onRetry={reload} />;
   if (loading) return <div className="text-muted">جارٍ تحميل مصفوفة المتهمين…</div>;
 
   return (

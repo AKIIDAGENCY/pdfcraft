@@ -3,6 +3,7 @@ import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, t
 import { api } from '../../lib/api';
 import { useAsync } from '../../hooks/useAsync';
 import { roleLabel } from '../../lib/format';
+import ErrorState from '../common/ErrorState';
 import type { Defendant, DefendantRole, NetworkLink } from '../../../shared/types';
 
 interface GraphNode extends SimulationNodeDatum {
@@ -29,7 +30,7 @@ const WIDTH = 900;
 const HEIGHT = 560;
 
 export default function NetworkGraph({ caseId }: { caseId: string }) {
-  const { data: bundle, loading } = useAsync(async () => {
+  const { data: bundle, loading, error, reload } = useAsync(async () => {
     const [defendants, entities, links, entityLinks] = await Promise.all([
       api.defendants.listByCase(caseId),
       api.entities.listByCase(caseId),
@@ -122,6 +123,7 @@ export default function NetworkGraph({ caseId }: { caseId: string }) {
     window.addEventListener('mouseup', onUp);
   }
 
+  if (error) return <ErrorState error={error} onRetry={reload} />;
   if (loading) return <div className="text-muted">جارٍ بناء المخطط العلائقي…</div>;
   if (nodes.length === 0) return <div className="text-muted">لا توجد بيانات علائقية لهذا الملف بعد.</div>;
 

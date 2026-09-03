@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateShort } from '../lib/format';
+import ErrorState from '../components/common/ErrorState';
 import type { Case } from '../../shared/types';
 
 const STATUS_LABELS: Record<Case['status'], string> = {
@@ -12,7 +13,7 @@ const STATUS_LABELS: Record<Case['status'], string> = {
 };
 
 export default function CasesListPage() {
-  const { data: cases, loading } = useAsync<Case[]>(() => api.cases.list(), []);
+  const { data: cases, loading, error, reload } = useAsync<Case[]>(() => api.cases.list(), []);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Case['status']>('all');
   const [qualificationFilter, setQualificationFilter] = useState('all');
@@ -40,6 +41,8 @@ export default function CasesListPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: 20, margin: 0 }}>ملفات القضايا</h1>
       </div>
+
+      {error && <ErrorState error={error} onRetry={reload} />}
 
       <div className="card" style={{ padding: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <input

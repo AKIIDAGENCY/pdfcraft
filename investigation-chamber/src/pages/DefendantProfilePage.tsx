@@ -4,6 +4,7 @@ import { useAsync } from '../hooks/useAsync';
 import CustodyBadge from '../components/common/CustodyBadge';
 import AlertBadge from '../components/common/AlertBadge';
 import { detentionEventLabel, formatDate, roleLabel } from '../lib/format';
+import ErrorState from '../components/common/ErrorState';
 import { JUDICIAL_CONTROL_MEASURES } from '../../shared/legal/articles';
 import type { Charge, Defendant, DetentionEvent, InterrogationRecord, Judge, JudicialControlMeasureRecord, Lawyer } from '../../shared/types';
 
@@ -13,7 +14,7 @@ export default function DefendantProfilePage() {
   const { caseId, defendantId } = useParams<{ caseId: string; defendantId: string }>();
   if (!caseId || !defendantId) return null;
 
-  const { data: defendant } = useAsync<Defendant | null>(() => api.defendants.get(defendantId), [defendantId]);
+  const { data: defendant, error, reload } = useAsync<Defendant | null>(() => api.defendants.get(defendantId), [defendantId]);
   const { data: charges } = useAsync<Charge[]>(() => api.charges.listByDefendant(defendantId), [defendantId]);
   const { data: events } = useAsync<DetentionEvent[]>(() => api.detention.listByDefendant(defendantId), [defendantId]);
   const { data: jcMeasures } = useAsync<JudicialControlMeasureRecord[]>(
@@ -33,6 +34,7 @@ export default function DefendantProfilePage() {
     [defendantId, severityTier, defendant?.custodyStatus],
   );
 
+  if (error) return <ErrorState error={error} onRetry={reload} />;
   if (!defendant) return <div className="text-muted">جارٍ التحميل…</div>;
 
   const lawyerNames = defendant.lawyerIds.map((id) => lawyers?.find((l) => l.id === id)?.fullName ?? '—');

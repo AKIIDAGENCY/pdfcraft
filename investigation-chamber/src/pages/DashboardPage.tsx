@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import { useAsync } from '../hooks/useAsync';
 import StatCard from '../components/dashboard/StatCard';
 import AlertBadge from '../components/common/AlertBadge';
+import ErrorState from '../components/common/ErrorState';
 import { formatNumber } from '../lib/format';
 import type { DetentionAlertLevel } from '../../shared/types';
 
@@ -23,8 +24,11 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { data: stats, loading } = useAsync<DashboardStats>(() => api.dashboard.stats(), []);
+  const { data: stats, loading, error, reload } = useAsync<DashboardStats>(() => api.dashboard.stats(), []);
 
+  if (error) {
+    return <ErrorState error={error} onRetry={reload} />;
+  }
   if (loading || !stats) {
     return <div className="text-muted">جارٍ تحميل لوحة القيادة…</div>;
   }

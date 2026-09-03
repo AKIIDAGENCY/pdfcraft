@@ -4,12 +4,13 @@ import { useAsync } from '../../hooks/useAsync';
 import { renderOrderHtml, TEMPLATE_TITLES, type DocumentTemplateCode } from '../../lib/documents/templates';
 import { buildOrderDocx } from '../../lib/documents/docxBuilder';
 import { formatDate } from '../../lib/format';
+import ErrorState from '../common/ErrorState';
 import type { Case, Defendant } from '../../../shared/types';
 
 const TEMPLATE_CODES = Object.keys(TEMPLATE_TITLES) as DocumentTemplateCode[];
 
 export default function DocumentGenerator({ caseId }: { caseId: string }) {
-  const { data: theCase } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
+  const { data: theCase, error: caseError, reload: reloadCase } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
   const { data: defendants } = useAsync<Defendant[]>(() => api.defendants.listByCase(caseId), [caseId]);
   const { data: documents, reload } = useAsync(() => api.documents.listByCase(caseId), [caseId]);
 
@@ -86,6 +87,8 @@ export default function DocumentGenerator({ caseId }: { caseId: string }) {
       setBusy(false);
     }
   }
+
+  if (caseError) return <ErrorState error={caseError} onRetry={reloadCase} />;
 
   return (
     <div style={{ display: 'flex', gap: 16 }}>
