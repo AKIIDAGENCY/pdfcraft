@@ -4,6 +4,13 @@ copyright: القطب الجزائي الوطني لمكافحة الإرهاب 
 # No auto-update feature in this app, so skip generating update-manifest metadata.
 publish: null
 
+# electron-builder's own native-module rebuild step does not reliably cross-compile
+# for win32 from a Linux host (it silently rebuilds for the host platform instead —
+# confirmed by inspecting the packaged binary). Native deps are rebuilt explicitly
+# for the target platform beforehand (see package.json's dist:win script), so skip
+# electron-builder's redundant rebuild here to avoid it clobbering the correct one.
+npmRebuild: false
+
 directories:
   output: release
   buildResources: build
