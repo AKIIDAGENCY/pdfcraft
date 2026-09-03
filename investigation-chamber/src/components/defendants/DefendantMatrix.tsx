@@ -7,6 +7,7 @@ import CustodyBadge from '../common/CustodyBadge';
 import AlertBadge from '../common/AlertBadge';
 import { roleLabel } from '../../lib/format';
 import ErrorState from '../common/ErrorState';
+import NewDefendantModal from './NewDefendantModal';
 import type { CustodyStatus, DefendantRole, DetentionAlertLevel } from '../../../shared/types';
 
 interface MatrixRow {
@@ -36,6 +37,7 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
   const [custodyFilter, setCustodyFilter] = useState<'all' | CustodyStatus>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | DefendantRole>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showNewDefendant, setShowNewDefendant] = useState(false);
   const [hearingDate, setHearingDate] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -184,7 +186,21 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
         <span className="text-muted" style={{ fontSize: 12 }}>
           {filtered.length} من {rows?.length ?? 0} متهما — محدد: {selected.size}
         </span>
+        <button className="btn btn-sm btn-primary" style={{ marginRight: 'auto' }} onClick={() => setShowNewDefendant(true)}>
+          + إضافة متهم
+        </button>
       </div>
+
+      {showNewDefendant && (
+        <NewDefendantModal
+          caseId={caseId}
+          onClose={() => setShowNewDefendant(false)}
+          onCreated={() => {
+            setShowNewDefendant(false);
+            reload();
+          }}
+        />
+      )}
 
       {selected.size > 0 && (
         <div className="card" style={{ padding: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateShort } from '../lib/format';
 import ErrorState from '../components/common/ErrorState';
+import NewCaseModal from '../components/cases/NewCaseModal';
 import type { Case } from '../../shared/types';
 
 const STATUS_LABELS: Record<Case['status'], string> = {
@@ -13,10 +14,12 @@ const STATUS_LABELS: Record<Case['status'], string> = {
 };
 
 export default function CasesListPage() {
+  const navigate = useNavigate();
   const { data: cases, loading, error, reload } = useAsync<Case[]>(() => api.cases.list(), []);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Case['status']>('all');
   const [qualificationFilter, setQualificationFilter] = useState('all');
+  const [showNewCase, setShowNewCase] = useState(false);
 
   const qualifications = useMemo(() => {
     const set = new Set<string>();
@@ -40,7 +43,20 @@ export default function CasesListPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: 20, margin: 0 }}>ملفات القضايا</h1>
+        <button className="btn btn-primary" onClick={() => setShowNewCase(true)}>
+          + إنشاء ملف قضية جديد
+        </button>
       </div>
+
+      {showNewCase && (
+        <NewCaseModal
+          onClose={() => setShowNewCase(false)}
+          onCreated={(caseId) => {
+            setShowNewCase(false);
+            navigate(`/cases/${caseId}`);
+          }}
+        />
+      )}
 
       {error && <ErrorState error={error} onRetry={reload} />}
 
