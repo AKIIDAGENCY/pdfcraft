@@ -20,8 +20,8 @@ Criminal Procedure, Law No. 25-14.
   Arabic HTML template through a hidden Chromium window's
   `printToPDF` (correct RTL/ligature shaping for free, no font-shaping
   library needed)
-- **Tests:** vitest, currently 26 tests covering the legal engine and the
-  mock-data generator
+- **Tests:** vitest, currently 48 tests covering the legal engine, the
+  mock-data generator, and the document-template escaping/content logic
 
 ## Project layout
 
@@ -137,6 +137,29 @@ rendering real seeded data correctly, in RTL, before this was called done.
 
 ## Notes on scope and judgment calls
 
+> **This system has not been reviewed by Ministry of Justice counsel or any
+> qualified Algerian criminal-procedure lawyer.** Every day/month figure and
+> cap below was transcribed from the brief given to build this system, not
+> independently verified against the official Arabic text of Law No. 25-14
+> or any implementing instruction. Before this is relied on to compute a
+> real detention deadline, appeal window, or renewal cap, every figure in
+> `shared/legal/articles.ts` should be checked against the statute by
+> someone qualified to do so — a wrong figure here has a direct
+> over-detention or under-detention consequence, not just a cosmetic bug.
+
+Every statutory figure currently hardcoded, for that review:
+
+| Constant | Value | Articles cited | What it assumes |
+|---|---|---|---|
+| `DETENTION.BASE_TERM_MONTHS` / `INCREMENT_MONTHS` | 4 months | 204 | Base term and every renewal/extension increment are the same length |
+| `DETENTION.MAX_JUDGE_RENEWALS_AGGRAVATED` | 3 | 204 | Applies only when a charge carries 20+ years/life/death |
+| `DETENTION.MAX_JUDGE_RENEWALS_ORDINARY` | 1 | 204 | A default for every other felony — the brief gave no explicit figure for this case; see below |
+| `DETENTION.MAX_CHAMBER_EXTENSIONS` | 4 | 204, 205 | Only for cases flagged transnational AND requiring forensic/cross-border work |
+| `DETENTION_ALERT_THRESHOLDS_DAYS` (green/orange/red) | 30 / 7 days | 83, 197, 204 | UI countdown coloring only — not a statutory cutoff, a judgment call about what counts as "urgent" |
+| `APPEAL_WINDOW_DAYS` | 3 days | 268 | Same window applies to the defendant and any civil party |
+| `PROSECUTION_REVIEW_WINDOW_DAYS` | 10 days | 143, 258 | Single figure for both cited articles |
+| `INTERCEPTION.MAX_DURATION_MONTHS` | 4 months | 114, 116 | No distinction made between an initial authorization and a renewal |
+
 - **Judicial-control renewal cadence, ordinary-felony renewal count:** the
   brief specifies exact figures only for the 20-year/life/death bracket
   (3 judge renewals) and the Chamber-of-Accusation extensions (4, for
@@ -161,3 +184,69 @@ rendering real seeded data correctly, in RTL, before this was called done.
 - This is a from-scratch build; it has not been reviewed by Ministry of
   Justice counsel. Treat the legal figures as a faithful implementation
   of the brief, not as independently verified legislative text.
+
+## IT deployment and operations
+
+- **Distribution:** `npm run dist:win` produces a single NSIS installer
+  (`release/InvestigationChamber-Setup-<version>.exe`). It is a per-machine-
+  or-per-user choice at install time (`perMachine: false` in
+  `electron-builder.yml` — the installer asks), with an optional custom
+  install directory, a desktop shortcut, and a Start Menu entry. There is
+  no auto-updater: a new version is a new installer run on top of the old
+  one (NSIS upgrades in place; it does not touch the data directory below).
+- **Network requirements: none.** The app makes no outbound network calls
+  of any kind — this was verified empirically in this environment by
+  running the compiled app inside a Linux network namespace with zero
+  network interfaces (`unshare --net`, not even loopback) and confirming it
+  seeds data, navigates every screen, and generates a real PDF. On a real
+  deployment this means no firewall rule, proxy exception, or domain
+  allowlisting is needed; it also means there is no phone-home telemetry
+  of any kind to disable.
+- **Where the data lives:** the encrypted database and its sealed key file
+  (`investigation-chamber.db`, `investigation-chamber.key.enc`) are written
+  under Electron's standard per-user application-data directory
+  (`app.getPath('userData')` — on Windows this resolves under the signed-in
+  user's `%APPDATA%` tree; the exact folder name follows whatever the
+  installer's app identity resolves to, so confirm it once on the target
+  machine rather than assuming a path). This means:
+  - **The database is tied to the Windows user account that created it**,
+    not just the machine. The encryption key is sealed via `safeStorage`,
+    which on Windows is backed by DPAPI and scoped to that OS user
+    profile. Moving the two files to a different Windows user account, or
+    restoring them after that user profile is deleted/reset, will not
+    decrypt — DPAPI will not unseal a key sealed under a different profile.
+  - A clean, cold backup is: stop the app, copy both files, store them
+    together (the key file is useless without the DB and vice versa).
+    There is currently no in-app backup/restore command — this is a
+    deliberate gap, tracked below, not an oversight.
+  - Restoring a backup is the reverse: stop the app (if running), replace
+    both files under the same Windows user account's userData folder, and
+    restart. Restoring to a *different* machine only works if that
+    machine's Windows user profile can unseal the same `safeStorage`
+    payload, which in practice means: only restore to the same user
+    account on the same machine, or plan for the key-recovery gap below
+    before relying on cross-machine restore.
+  - If `safeStorage.isEncryptionAvailable()` ever returns false on a real
+    Windows machine (no known cause on a normal Windows install — DPAPI is
+    always present), the app fails closed with a clear error rather than
+    falling back to an unencrypted database. There is currently no
+    recovery path for that state short of starting a fresh database; see
+    the key-recovery gap below.
+- **Single-instance behavior:** launching the app a second time (e.g. a
+  double-clicked shortcut while it's already open) focuses the existing
+  window instead of opening a second process against the same database
+  file, which better-sqlite3's own file locking would otherwise make the
+  second instance fail against unpredictably.
+- **Printing/PDF export** uses Chromium's own built-in PDF renderer (no
+  external PDF library, no print driver, no network font fetch) — this is
+  part of what the offline test above confirmed.
+- **Known operational gaps, not yet built:** an in-app encrypted backup/
+  export command; a key-recovery mechanism for a lost/corrupted DPAPI
+  profile (today, losing the Windows user profile that created the
+  database means losing access to it — there is no recovery code, no
+  secondary admin key, nothing); bundling the Cairo Arabic font locally
+  (the app currently relies on whatever Arabic-capable font Windows ships
+  with, which varies by Windows edition/language pack). These should be
+  resolved, in roughly that priority order, before this is handed to a
+  real office to depend on day-to-day — the first two are data-loss risks,
+  not polish.
