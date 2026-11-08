@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -8,7 +8,7 @@ import AlertBadge from '../common/AlertBadge';
 import { roleLabel } from '../../lib/format';
 import ErrorState from '../common/ErrorState';
 import NewDefendantModal from './NewDefendantModal';
-import type { CustodyStatus, DefendantRole, DetentionAlertLevel } from '../../../shared/types';
+import type { Case, CustodyStatus, DefendantRole, DetentionAlertLevel } from '../../../shared/types';
 
 interface MatrixRow {
   defendant: {
@@ -33,6 +33,16 @@ const ROW_HEIGHT = 46;
 
 export default function DefendantMatrix({ caseId }: { caseId: string }) {
   const { data: rows, loading, error, reload } = useAsync<MatrixRow[]>(() => api.defendants.matrix(caseId), [caseId]);
+  const { data: theCase, error: caseError, reload: reloadCase } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
+  const firstError = error ?? caseError;
+  function reloadAll() {
+    reload();
+    reloadCase();
+  }
+  // Chamber-of-Accusation extensions are reserved (Art. 205) for
+  // transnational/terrorism files requiring forensic examination or
+  // cross-border inquiries — must be derived from the case, never assumed.
+  const chamberExtensionEligible = Boolean(theCase?.isTransnational && theCase?.requiresForensicOrCrossBorder);
   const [search, setSearch] = useState('');
   const [custodyFilter, setCustodyFilter] = useState<'all' | CustodyStatus>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | DefendantRole>('all');
@@ -41,6 +51,14 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
   const [hearingDate, setHearingDate] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // A selection made before changing filters could silently span rows the
+  // user never looked at — a real risk for the bulk actions below, which
+  // write real detention/document records. Force re-selection after any
+  // filter change rather than carrying a possibly-surprising selection.
+  useEffect(() => {
+    setSelected(new Set());
+  }, [search, custodyFilter, roleFilter]);
 
   const filtered = useMemo(() => {
     return (rows ?? []).filter((r) => {
@@ -81,9 +99,10 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
   }
 
   async function runBulkSummons() {
+    const ids = Array.from(selected);
+    if (!window.confirm(`سيتم إصدار ${ids.length} استدعاء/استدعاءات للمثول أمام قاضي التحقيق. هل تريد المتابعة؟`)) return;
     setBusy(true);
     try {
-      const ids = Array.from(selected);
       await Promise.all(
         ids.map((id) =>
           api.documents.create({
@@ -95,21 +114,29 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
         ),
       );
       setActionMessage(`تم إصدار ${ids.length} استدعاء/استدعاءات.`);
+    } catch (err) {
+      setActionMessage(`تعذر إصدار الاستدعاءات: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
   }
 
   async function runMassRenewalRequest() {
+    const targets = filtered.filter((r) => selected.has(r.defendant.id) && r.defendant.custodyStatus === 'detained');
+    if (
+      !window.confirm(
+        `سيتم فحص أهلية ${targets.length} متهما محبوسا محددا، وتسجيل طلب تمديد حبس حقيقي أمام غرفة الاتهام (4 أشهر) لكل من يثبت أنه مؤهل — وهو إجراء ذو أثر قانوني مباشر على وضعيتهم ولا يمكن التراجع عنه من داخل النظام. هل تريد المتابعة؟`,
+      )
+    )
+      return;
     setBusy(true);
     try {
-      const targets = filtered.filter((r) => selected.has(r.defendant.id) && r.defendant.custodyStatus === 'detained');
       const results = await Promise.all(
         targets.map(async (r) => {
           const { eligibility } = await api.detention.status(
             r.defendant.id,
             r.severityTier ?? 'ordinary',
-            true,
+            chamberExtensionEligible,
           );
           if (!eligibility.eligible || eligibility.nextEventType !== 'chamber_extension') return false;
           await api.detention.create({
@@ -128,6 +155,8 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
         `تم رفع ${created} طلب/طلبات تمديد إلى غرفة الاتهام من أصل ${targets.length} محبوس محدد (البقية غير مؤهلة حاليا).`,
       );
       reload();
+    } catch (err) {
+      setActionMessage(`تعذر تنفيذ طلب التمديد الجماعي: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -138,9 +167,10 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
       setActionMessage('يرجى تحديد تاريخ الجلسة أولا.');
       return;
     }
+    const ids = Array.from(selected);
+    if (!window.confirm(`سيتم جدولة جلسة استماع جماعية لـ ${ids.length} متهما بتاريخ ${hearingDate}. هل تريد المتابعة؟`)) return;
     setBusy(true);
     try {
-      const ids = Array.from(selected);
       await Promise.all(
         ids.map((id) =>
           api.documents.create({
@@ -152,12 +182,14 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
         ),
       );
       setActionMessage(`تمت جدولة جلسة استماع جماعية لـ ${ids.length} متهما بتاريخ ${hearingDate}.`);
+    } catch (err) {
+      setActionMessage(`تعذر جدولة جلسة الاستماع: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
   }
 
-  if (error) return <ErrorState error={error} onRetry={reload} />;
+  if (firstError) return <ErrorState error={firstError} onRetry={reloadAll} />;
   if (loading) return <div className="text-muted">جارٍ تحميل مصفوفة المتهمين…</div>;
 
   return (

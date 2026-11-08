@@ -60,8 +60,12 @@ const api = {
   witnesses: {
     listByCase: (caseId: string) => ipcRenderer.invoke('witnesses:listByCase', caseId),
     create: (input: unknown, realIdentity: unknown) => ipcRenderer.invoke('witnesses:create', input, realIdentity),
-    revealIdentity: (sealedFileRef: string, userId: string) =>
-      ipcRenderer.invoke('witnesses:revealIdentity', sealedFileRef, userId),
+    revealIdentity: (sealedFileRef: string, userId: string, pin: string) =>
+      ipcRenderer.invoke('witnesses:revealIdentity', sealedFileRef, userId, pin),
+  },
+  security: {
+    isRevealPinSet: () => ipcRenderer.invoke('security:isRevealPinSet'),
+    setRevealPin: (pin: string) => ipcRenderer.invoke('security:setRevealPin', pin),
   },
   network: {
     listByCase: (caseId: string) => ipcRenderer.invoke('network:listByCase', caseId),

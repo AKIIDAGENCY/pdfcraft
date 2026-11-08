@@ -204,6 +204,18 @@ describe('computeDetentionStatus — integrity checks', () => {
   });
 });
 
+describe('computeDetentionStatus — month-end deadline arithmetic', () => {
+  it('expires a term started on the 31st at the end of a shorter month, not 2-3 days into the next one', () => {
+    // Regression for a bug where unclamped Date.setMonth() pushed deadlines
+    // 1-3+ days too late whenever the start date fell near month-end.
+    const events: DetentionEvent[] = [
+      mkEvent({ type: 'initial_order', startDate: '2026-01-31T00:00:00Z', durationMonths: 1 }),
+    ];
+    const status = computeDetentionStatus(events, 'ordinary', {}, new Date('2026-02-01T00:00:00Z'));
+    expect(status.currentExpirationDate?.toISOString().slice(0, 10)).toBe('2026-02-28');
+  });
+});
+
 describe('evaluateRenewalEligibility', () => {
   it('returns not-eligible with no active segment', () => {
     const status = computeDetentionStatus([], 'ordinary', {}, new Date());

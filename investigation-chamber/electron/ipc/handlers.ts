@@ -72,9 +72,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('witnesses:create', (_e, input, realIdentity) =>
     repo.createProtectedWitness(input, realIdentity),
   );
-  ipcMain.handle('witnesses:revealIdentity', (_e, sealedFileRef: string, userId: string) =>
-    repo.revealProtectedWitnessIdentity(sealedFileRef, userId),
+  ipcMain.handle('witnesses:revealIdentity', (_e, sealedFileRef: string, userId: string, pin: string) =>
+    repo.revealProtectedWitnessIdentity(sealedFileRef, userId, pin),
   );
+  ipcMain.handle('security:isRevealPinSet', () => repo.isRevealPinSet());
+  ipcMain.handle('security:setRevealPin', (_e, pin: string) => repo.setRevealPin(pin));
 
   // Network graph ------------------------------------------------------------
   ipcMain.handle('network:listByCase', (_e, caseId: string) => repo.listNetworkLinksByCase(caseId));
@@ -125,6 +127,11 @@ export function registerIpcHandlers(): void {
       show: false,
       webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
     });
+    // The window has no preload script, so it has no `window.api` to reach —
+    // this only stops it from opening a new window or navigating away, in
+    // case escaped markup still somehow executes script here.
+    printWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    printWindow.webContents.on('will-navigate', (event) => event.preventDefault());
     try {
       await printWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`);
       const buffer = await printWindow.webContents.printToPDF({

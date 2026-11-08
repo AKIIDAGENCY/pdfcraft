@@ -11,8 +11,15 @@ const TEMPLATE_CODES = Object.keys(TEMPLATE_TITLES) as DocumentTemplateCode[];
 
 export default function DocumentGenerator({ caseId }: { caseId: string }) {
   const { data: theCase, error: caseError, reload: reloadCase } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
-  const { data: defendants } = useAsync<Defendant[]>(() => api.defendants.listByCase(caseId), [caseId]);
-  const { data: documents, reload } = useAsync(() => api.documents.listByCase(caseId), [caseId]);
+  const { data: defendants, error: defendantsError, reload: reloadDefendants } = useAsync<Defendant[]>(() => api.defendants.listByCase(caseId), [caseId]);
+  const { data: documents, error: documentsError, reload } = useAsync(() => api.documents.listByCase(caseId), [caseId]);
+
+  const firstError = caseError ?? defendantsError ?? documentsError;
+  function reloadAll() {
+    reloadCase();
+    reloadDefendants();
+    reload();
+  }
 
   const [templateCode, setTemplateCode] = useState<DocumentTemplateCode>('DETENTION_ORDER');
   const [defendantId, setDefendantId] = useState<string>('');
@@ -58,6 +65,8 @@ export default function DocumentGenerator({ caseId }: { caseId: string }) {
         await recordDocument();
         setMessage(`تم حفظ الملف: ${result.filePath}`);
       }
+    } catch (err) {
+      setMessage(`تعذر تصدير الملف: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -83,12 +92,14 @@ export default function DocumentGenerator({ caseId }: { caseId: string }) {
         await recordDocument();
         setMessage(`تم حفظ الملف: ${result.filePath}`);
       }
+    } catch (err) {
+      setMessage(`تعذر تصدير الملف: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
   }
 
-  if (caseError) return <ErrorState error={caseError} onRetry={reloadCase} />;
+  if (firstError) return <ErrorState error={firstError} onRetry={reloadAll} />;
 
   return (
     <div style={{ display: 'flex', gap: 16 }}>
@@ -158,7 +169,11 @@ export default function DocumentGenerator({ caseId }: { caseId: string }) {
       </div>
 
       <div className="card" style={{ flex: 1, overflow: 'hidden' }}>
-        <iframe title="معاينة المستند" srcDoc={html} style={{ width: '100%', height: 640, border: 'none', background: '#fff' }} />
+        {/* Empty sandbox: the preview has no legitimate need to run script at
+            all, and a srcDoc iframe with no sandbox is same-origin with this
+            page, so unescaped injected markup could otherwise reach
+            window.parent.api — the full privileged IPC bridge. */}
+        <iframe title="معاينة المستند" srcDoc={html} sandbox="" style={{ width: '100%', height: 640, border: 'none', background: '#fff' }} />
       </div>
     </div>
   );

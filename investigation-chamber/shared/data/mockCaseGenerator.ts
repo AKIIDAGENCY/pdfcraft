@@ -23,6 +23,7 @@ import type {
   SeizureRecord,
 } from '../types';
 import { JUDICIAL_CONTROL_MEASURES } from '../legal/articles';
+import { addMonths } from '../engine/mathUtils';
 
 // --- seeded PRNG (mulberry32) so the mock case is reproducible -------------
 function mulberry32(seed: number) {
@@ -62,12 +63,6 @@ function pick<T>(arr: readonly T[], rnd: () => number): T {
 
 function isoDate(d: Date): string {
   return d.toISOString();
-}
-
-function addMonths(date: Date, months: number): Date {
-  const result = new Date(date.getTime());
-  result.setMonth(result.getMonth() + months);
-  return result;
 }
 
 export interface MockCaseBundle {

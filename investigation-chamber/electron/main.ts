@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, Menu, shell } from 'electron';
 import path from 'node:path';
 import { registerIpcHandlers } from './ipc/handlers';
 import { closeDb } from './db/connection';
@@ -6,6 +6,22 @@ import { closeDb } from './db/connection';
 const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
+
+// A clerk double-clicking the desktop shortcut twice, or two logins on a
+// shared office PC launching it at once, must not get two independent
+// windows writing to the same encrypted database — focus the existing
+// window instead of starting a second process.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -37,10 +53,28 @@ function createMainWindow(): void {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
+
+    // The case file this app handles is judicial-secrecy material (sealed
+    // witness identities, interception targets). DevTools gives unrestricted
+    // read/write access to the renderer's memory and the IPC bridge, so it
+    // must be unreachable in a packaged build — not just hidden behind a
+    // menu bar that Alt reveals.
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      const isDevToolsShortcut =
+        input.key === 'F12' ||
+        ((input.control || input.meta) && input.shift && (input.key.toLowerCase() === 'i' || input.key.toLowerCase() === 'j')) ||
+        ((input.control || input.meta) && input.key.toLowerCase() === 'u');
+      if (isDevToolsShortcut) event.preventDefault();
+    });
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow?.webContents.closeDevTools();
+    });
   }
 }
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
+  if (!isDev) Menu.setApplicationMenu(null);
   registerIpcHandlers();
   createMainWindow();
 

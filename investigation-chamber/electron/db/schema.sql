@@ -238,3 +238,13 @@ CREATE TABLE IF NOT EXISTS schema_meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Single-row table: the access PIN gating protected-witness identity reveal
+-- (Arts. 128/132/133/138). Scrypt hash + per-install salt, never the PIN itself.
+CREATE TABLE IF NOT EXISTS security_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  reveal_pin_hash TEXT NOT NULL,
+  reveal_pin_salt TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

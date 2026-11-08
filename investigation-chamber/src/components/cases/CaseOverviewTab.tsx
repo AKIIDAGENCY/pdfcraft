@@ -1,19 +1,36 @@
+import { useState } from 'react';
 import { api } from '../../lib/api';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate, formatMoney, seizureStatusLabel } from '../../lib/format';
 import ErrorState from '../common/ErrorState';
+import RevealWitnessIdentityModal from './RevealWitnessIdentityModal';
 import type { Case, InfiltrationRecord, InterceptionRecord, Judge, ProtectedWitness, SeizureRecord } from '../../../shared/types';
 
 export default function CaseOverviewTab({ caseId }: { caseId: string }) {
+  const [revealTarget, setRevealTarget] = useState<ProtectedWitness | null>(null);
   const { data: theCase, error, reload } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
-  const { data: judges } = useAsync<Judge[]>(() => api.judges.list(), []);
-  const { data: interceptions } = useAsync<InterceptionRecord[]>(() => api.interceptions.listByCase(caseId), [caseId]);
-  const { data: infiltrations } = useAsync<InfiltrationRecord[]>(() => api.infiltrations.listByCase(caseId), [caseId]);
-  const { data: seizures } = useAsync<SeizureRecord[]>(() => api.seizures.listByCase(caseId), [caseId]);
-  const { data: witnesses } = useAsync<ProtectedWitness[]>(() => api.witnesses.listByCase(caseId), [caseId]);
-  const { data: entities } = useAsync(() => api.entities.listByCase(caseId), [caseId]);
+  const { data: judges, error: judgesError, reload: reloadJudges } = useAsync<Judge[]>(() => api.judges.list(), []);
+  const { data: interceptions, error: interceptionsError, reload: reloadInterceptions } = useAsync<InterceptionRecord[]>(() => api.interceptions.listByCase(caseId), [caseId]);
+  const { data: infiltrations, error: infiltrationsError, reload: reloadInfiltrations } = useAsync<InfiltrationRecord[]>(() => api.infiltrations.listByCase(caseId), [caseId]);
+  const { data: seizures, error: seizuresError, reload: reloadSeizures } = useAsync<SeizureRecord[]>(() => api.seizures.listByCase(caseId), [caseId]);
+  const { data: witnesses, error: witnessesError, reload: reloadWitnesses } = useAsync<ProtectedWitness[]>(() => api.witnesses.listByCase(caseId), [caseId]);
+  const { data: entities, error: entitiesError, reload: reloadEntities } = useAsync(() => api.entities.listByCase(caseId), [caseId]);
 
-  if (error) return <ErrorState error={error} onRetry={reload} />;
+  // Surface any of the six independent fetches' failures, not just the
+  // case's own — previously a failed interceptions/entities/etc. fetch was
+  // silently indistinguishable from "none exist yet".
+  const firstError = error ?? judgesError ?? interceptionsError ?? infiltrationsError ?? seizuresError ?? witnessesError ?? entitiesError;
+  function reloadAll() {
+    reload();
+    reloadJudges();
+    reloadInterceptions();
+    reloadInfiltrations();
+    reloadSeizures();
+    reloadWitnesses();
+    reloadEntities();
+  }
+
+  if (firstError) return <ErrorState error={firstError} onRetry={reloadAll} />;
   if (!theCase) return <div className="text-muted">جارٍ التحميل…</div>;
 
   const primaryJudge = judges?.find((j) => j.id === theCase.primaryInvestigatingJudgeId);
@@ -122,6 +139,9 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
                 <li key={w.id} style={{ fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
                   🔒 {w.pseudonym}
                   <span className="text-muted">— ملف سري مستقل</span>
+                  <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px', marginInlineStart: 'auto' }} onClick={() => setRevealTarget(w)}>
+                    الاطلاع على الهوية
+                  </button>
                 </li>
               ))}
             </ul>
@@ -143,6 +163,14 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
           )}
         </div>
       </div>
+
+      {revealTarget && (
+        <RevealWitnessIdentityModal
+          sealedFileRef={revealTarget.sealedFileRef}
+          pseudonym={revealTarget.pseudonym}
+          onClose={() => setRevealTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ export default function NetworkGraph({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   const [positions, setPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [layoutComputing, setLayoutComputing] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focusEntitiesOnly, setFocusEntitiesOnly] = useState(false);
   const nodesRef = useRef<GraphNode[]>([]);
@@ -73,33 +74,53 @@ export default function NetworkGraph({ caseId }: { caseId: string }) {
     return { nodes, edges };
   }, [bundle]);
 
+  // Keyed by actual node/edge identity, not counts: switching from one case
+  // to another whose node and edge COUNTS happen to match (a realistic
+  // coincidence) must still re-run the layout. Keying on [nodes.length,
+  // edges.length] previously meant that case switch left `positions` keyed
+  // by the old case's node ids, so every lookup below missed and the graph
+  // rendered completely blank with no error.
+  const graphKey = useMemo(
+    () => `${nodes.map((n) => n.id).join(',')}::${edges.map((e) => `${e.source}-${e.target}`).join(',')}`,
+    [nodes, edges],
+  );
+
   useEffect(() => {
     if (nodes.length === 0) return;
-    const simNodes = nodes.map((n) => ({ ...n }));
-    nodesRef.current = simNodes;
+    setLayoutComputing(true);
+    // Yield one frame so React can paint the "computing layout" state before
+    // the synchronous 260-tick simulation blocks the main thread — at a few
+    // hundred nodes that loop is long enough to otherwise freeze the UI with
+    // no feedback at all.
+    const raf = requestAnimationFrame(() => {
+      const simNodes = nodes.map((n) => ({ ...n }));
+      nodesRef.current = simNodes;
 
-    const sim = forceSimulation(simNodes)
-      .force(
-        'link',
-        forceLink<GraphNode, any>(edges as any)
-          .id((d: any) => d.id)
-          .distance(70)
-          .strength(0.4),
-      )
-      .force('charge', forceManyBody().strength(-90))
-      .force('center', forceCenter(WIDTH / 2, HEIGHT / 2))
-      .force('collide', forceCollide(22))
-      .stop();
+      const sim = forceSimulation(simNodes)
+        .force(
+          'link',
+          forceLink<GraphNode, any>(edges as any)
+            .id((d: any) => d.id)
+            .distance(70)
+            .strength(0.4),
+        )
+        .force('charge', forceManyBody().strength(-90))
+        .force('center', forceCenter(WIDTH / 2, HEIGHT / 2))
+        .force('collide', forceCollide(22))
+        .stop();
 
-    for (let i = 0; i < 260; i++) sim.tick();
+      for (let i = 0; i < 260; i++) sim.tick();
 
-    const next = new Map<string, { x: number; y: number }>();
-    for (const n of simNodes) {
-      next.set(n.id, { x: n.x ?? WIDTH / 2, y: n.y ?? HEIGHT / 2 });
-    }
-    setPositions(next);
+      const next = new Map<string, { x: number; y: number }>();
+      for (const n of simNodes) {
+        next.set(n.id, { x: n.x ?? WIDTH / 2, y: n.y ?? HEIGHT / 2 });
+      }
+      setPositions(next);
+      setLayoutComputing(false);
+    });
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes.length, edges.length]);
+  }, [graphKey]);
 
   function handleDrag(id: string, e: React.MouseEvent<SVGCircleElement | SVGRectElement>) {
     e.preventDefault();
@@ -126,6 +147,7 @@ export default function NetworkGraph({ caseId }: { caseId: string }) {
   if (error) return <ErrorState error={error} onRetry={reload} />;
   if (loading) return <div className="text-muted">جارٍ بناء المخطط العلائقي…</div>;
   if (nodes.length === 0) return <div className="text-muted">لا توجد بيانات علائقية لهذا الملف بعد.</div>;
+  if (layoutComputing) return <div className="text-muted">جارٍ حساب تخطيط المخطط العلائقي…</div>;
 
   const relatedToHover = new Set<string>();
   if (hovered) {

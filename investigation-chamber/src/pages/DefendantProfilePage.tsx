@@ -7,44 +7,75 @@ import AlertBadge from '../components/common/AlertBadge';
 import { detentionEventLabel, formatDate, roleLabel } from '../lib/format';
 import ErrorState from '../components/common/ErrorState';
 import { JUDICIAL_CONTROL_MEASURES } from '../../shared/legal/articles';
-import type { Charge, Defendant, DetentionEvent, InterrogationRecord, Judge, JudicialControlMeasureRecord, Lawyer } from '../../shared/types';
+import { selectGoverningCharge } from '../../shared/engine/chargeUtils';
+import type { Case, Charge, Defendant, DetentionEvent, InterrogationRecord, Judge, JudicialControlMeasureRecord, Lawyer } from '../../shared/types';
 
 const MEASURE_LABEL = new Map<string, string>(JUDICIAL_CONTROL_MEASURES.map((m) => [m.code, m.labelAr]));
 
 export default function DefendantProfilePage() {
   const { caseId, defendantId } = useParams<{ caseId: string; defendantId: string }>();
-  if (!caseId || !defendantId) return null;
 
-  const { data: defendant, error, reload } = useAsync<Defendant | null>(() => api.defendants.get(defendantId), [defendantId]);
-  const { data: charges } = useAsync<Charge[]>(() => api.charges.listByDefendant(defendantId), [defendantId]);
-  const { data: events, reload: reloadEvents } = useAsync<DetentionEvent[]>(
-    () => api.detention.listByDefendant(defendantId),
+  // The route always supplies both params, but a conditional `return` before
+  // hook calls is a Rules-of-Hooks violation regardless — a landmine for any
+  // future route change. Every hook below runs unconditionally on every
+  // render; each fetcher guards the possibly-undefined id itself, and the
+  // "missing id" case is handled once, after all hooks, just above the JSX.
+  const { data: defendant, error, reload } = useAsync<Defendant | null>(
+    () => (defendantId ? api.defendants.get(defendantId) : Promise.resolve(null)),
     [defendantId],
   );
-  const { data: jcMeasures, reload: reloadMeasures } = useAsync<JudicialControlMeasureRecord[]>(
-    () => api.judicialControl.listByDefendant(defendantId),
+  const { data: charges, error: chargesError, reload: reloadCharges } = useAsync<Charge[]>(
+    () => (defendantId ? api.charges.listByDefendant(defendantId) : Promise.resolve([])),
     [defendantId],
   );
-  const { data: interrogations, reload: reloadInterrogations } = useAsync<InterrogationRecord[]>(
-    () => api.interrogations.listByDefendant(defendantId),
+  const { data: events, error: eventsError, reload: reloadEvents } = useAsync<DetentionEvent[]>(
+    () => (defendantId ? api.detention.listByDefendant(defendantId) : Promise.resolve([])),
     [defendantId],
   );
-  const { data: lawyers } = useAsync<Lawyer[]>(() => api.lawyers.list(), []);
-  const { data: judges } = useAsync<Judge[]>(() => api.judges.list(), []);
+  const { data: jcMeasures, error: measuresError, reload: reloadMeasures } = useAsync<JudicialControlMeasureRecord[]>(
+    () => (defendantId ? api.judicialControl.listByDefendant(defendantId) : Promise.resolve([])),
+    [defendantId],
+  );
+  const { data: interrogations, error: interrogationsError, reload: reloadInterrogations } = useAsync<InterrogationRecord[]>(
+    () => (defendantId ? api.interrogations.listByDefendant(defendantId) : Promise.resolve([])),
+    [defendantId],
+  );
+  const { data: lawyers, error: lawyersError, reload: reloadLawyers } = useAsync<Lawyer[]>(() => api.lawyers.list(), []);
+  const { data: judges, error: judgesError, reload: reloadJudges } = useAsync<Judge[]>(() => api.judges.list(), []);
+  const { data: theCase, error: caseError, reload: reloadCase } = useAsync<Case | null>(
+    () => (caseId ? api.cases.get(caseId) : Promise.resolve(null)),
+    [caseId],
+  );
 
-  const severityTier = charges?.[0]?.severityTier ?? 'ordinary';
-  const { data: detentionStatus, reload: reloadStatus } = useAsync(
-    () => api.detention.status(defendantId, severityTier, true),
-    [defendantId, severityTier, defendant?.custodyStatus],
+  const severityTier = selectGoverningCharge(charges ?? [])?.severityTier ?? 'ordinary';
+  // Chamber-of-Accusation extensions are reserved (Art. 205) for
+  // transnational/terrorism files requiring forensic examination or
+  // cross-border inquiries — derive this from the case itself rather than
+  // assuming every case qualifies, which would wrongly authorize continued
+  // detention beyond the lawful ceiling for an ordinary case.
+  const chamberExtensionEligible = Boolean(theCase?.isTransnational && theCase?.requiresForensicOrCrossBorder);
+  const { data: detentionStatus, error: statusError, reload: reloadStatus } = useAsync(
+    () => (defendantId ? api.detention.status(defendantId, severityTier, chamberExtensionEligible) : Promise.resolve(null)),
+    [defendantId, severityTier, chamberExtensionEligible, defendant?.custodyStatus],
   );
 
   function reloadAll() {
     reload();
+    reloadCharges();
     reloadEvents();
     reloadMeasures();
     reloadInterrogations();
+    reloadLawyers();
+    reloadJudges();
+    reloadCase();
     reloadStatus();
   }
+
+  // Every one of the fetches above can independently fail (a dropped IPC
+  // call, a bad row) — surfacing only the first one's error previously left
+  // every other failure silent, e.g. a lawyers-list failure would just show
+  // "no defense counsel" instead of "failed to load".
+  const firstError = error ?? chargesError ?? eventsError ?? measuresError ?? interrogationsError ?? lawyersError ?? judgesError ?? caseError ?? statusError;
 
   const [renewalOrderedBy, setRenewalOrderedBy] = useState('');
   const [renewalBusy, setRenewalBusy] = useState(false);
@@ -59,8 +90,10 @@ export default function DefendantProfilePage() {
   const [interrogationJudge, setInterrogationJudge] = useState('');
   const [interrogationSummary, setInterrogationSummary] = useState('');
   const [interrogationBusy, setInterrogationBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  if (error) return <ErrorState error={error} onRetry={reload} />;
+  if (!caseId || !defendantId) return null;
+  if (firstError) return <ErrorState error={firstError} onRetry={reloadAll} />;
   if (!defendant) return <div className="text-muted">جارٍ التحميل…</div>;
 
   const lawyerNames = defendant.lawyerIds.map((id) => lawyers?.find((l) => l.id === id)?.fullName ?? '—');
@@ -84,7 +117,10 @@ export default function DefendantProfilePage() {
         notificationDate: new Date().toISOString(),
       });
       setRenewalOrderedBy('');
+      setActionError(null);
       reloadAll();
+    } catch (err) {
+      setActionError(`تعذر تسجيل التمديد: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setRenewalBusy(false);
     }
@@ -106,7 +142,10 @@ export default function DefendantProfilePage() {
       } else {
         await api.defendants.bulkUpdateCustodyStatus([defendantId!], 'free');
       }
+      setActionError(null);
       reloadAll();
+    } catch (err) {
+      setActionError(`تعذر تسجيل الإفراج: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setReleaseBusy(false);
     }
@@ -124,7 +163,10 @@ export default function DefendantProfilePage() {
         active: true,
       });
       setNewMeasureCode('');
+      setActionError(null);
       reloadAll();
+    } catch (err) {
+      setActionError(`تعذر إضافة التدبير: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setMeasureBusy(false);
     }
@@ -146,7 +188,10 @@ export default function DefendantProfilePage() {
       setShowInterrogationForm(false);
       setInterrogationJudge('');
       setInterrogationSummary('');
+      setActionError(null);
       reloadInterrogations();
+    } catch (err) {
+      setActionError(`تعذر تسجيل الاستجواب: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setInterrogationBusy(false);
     }
@@ -175,6 +220,15 @@ export default function DefendantProfilePage() {
           <CustodyBadge status={defendant.custodyStatus} />
         </div>
       </div>
+
+      {actionError && (
+        <div
+          className="card"
+          style={{ padding: '10px 14px', fontSize: 12.5, background: 'var(--color-alert-red-bg)', color: 'var(--color-alert-red-fg)' }}
+        >
+          ⚠ {actionError}
+        </div>
+      )}
 
       {defendant.custodyStatus === 'detained' && detentionStatus && (
         <div className="card" style={{ padding: 18 }}>

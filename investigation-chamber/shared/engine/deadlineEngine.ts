@@ -3,18 +3,12 @@ import {
   PROSECUTION_REVIEW_WINDOW_DAYS,
   INTERCEPTION,
 } from '../legal/articles';
-import { normalizeZero } from './mathUtils';
+import { addMonths, normalizeZero } from './mathUtils';
 import type { DetentionAlertLevel, InterceptionRecord } from '../types';
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date.getTime());
   result.setDate(result.getDate() + days);
-  return result;
-}
-
-function addMonths(date: Date, months: number): Date {
-  const result = new Date(date.getTime());
-  result.setMonth(result.getMonth() + months);
   return result;
 }
 

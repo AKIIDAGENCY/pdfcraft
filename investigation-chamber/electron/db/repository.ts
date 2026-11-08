@@ -1,6 +1,8 @@
 import { v4 as uuid } from 'uuid';
+import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { getDb } from './connection';
 import { computeDetentionStatus } from '../../shared/engine/detentionEngine';
+import { selectGoverningCharge } from '../../shared/engine/chargeUtils';
 import type {
   Case,
   Charge,
@@ -102,32 +104,35 @@ export function createCase(input: Omit<Case, 'id' | 'createdAt' | 'updatedAt'>):
   const db = getDb();
   const id = uuid();
   const now = nowIso();
-  db.prepare(
-    `INSERT INTO cases (id, case_number, registration_date, title, legal_qualifications, is_transnational,
-       requires_forensic_or_cross_border, primary_investigating_judge_id, status, notes, created_at, updated_at)
-     VALUES (@id, @caseNumber, @registrationDate, @title, @legalQualifications, @isTransnational,
-       @requiresForensicOrCrossBorder, @primaryInvestigatingJudgeId, @status, @notes, @createdAt, @updatedAt)`,
-  ).run({
-    id,
-    caseNumber: input.caseNumber,
-    registrationDate: input.registrationDate,
-    title: input.title,
-    legalQualifications: JSON.stringify(input.legalQualifications),
-    isTransnational: fromBool(input.isTransnational),
-    requiresForensicOrCrossBorder: fromBool(input.requiresForensicOrCrossBorder),
-    primaryInvestigatingJudgeId: input.primaryInvestigatingJudgeId || null,
-    status: input.status,
-    notes: input.notes ?? null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const txn = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO cases (id, case_number, registration_date, title, legal_qualifications, is_transnational,
+         requires_forensic_or_cross_border, primary_investigating_judge_id, status, notes, created_at, updated_at)
+       VALUES (@id, @caseNumber, @registrationDate, @title, @legalQualifications, @isTransnational,
+         @requiresForensicOrCrossBorder, @primaryInvestigatingJudgeId, @status, @notes, @createdAt, @updatedAt)`,
+    ).run({
+      id,
+      caseNumber: input.caseNumber,
+      registrationDate: input.registrationDate,
+      title: input.title,
+      legalQualifications: JSON.stringify(input.legalQualifications),
+      isTransnational: fromBool(input.isTransnational),
+      requiresForensicOrCrossBorder: fromBool(input.requiresForensicOrCrossBorder),
+      primaryInvestigatingJudgeId: input.primaryInvestigatingJudgeId || null,
+      status: input.status,
+      notes: input.notes ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
 
-  const insertAncillary = db.prepare(
-    'INSERT OR IGNORE INTO case_ancillary_judges (case_id, judge_id) VALUES (?, ?)',
-  );
-  for (const judgeId of input.ancillaryInvestigatingJudgeIds) {
-    insertAncillary.run(id, judgeId);
-  }
+    const insertAncillary = db.prepare(
+      'INSERT OR IGNORE INTO case_ancillary_judges (case_id, judge_id) VALUES (?, ?)',
+    );
+    for (const judgeId of input.ancillaryInvestigatingJudgeIds) {
+      insertAncillary.run(id, judgeId);
+    }
+  });
+  txn();
 
   return getCase(id)!;
 }
@@ -145,8 +150,19 @@ export function listJudges(): Judge[] {
   }));
 }
 
+/**
+ * Both call sites (NewCaseModal, and anywhere a judge is assigned) are a
+ * free-text name field with no "pick existing judge" option, so the same
+ * judge presiding over a dozen cases would otherwise get a dozen duplicate
+ * rows. Match by exact name, case/whitespace-insensitive, before inserting.
+ */
 export function createJudge(input: Omit<Judge, 'id'>): Judge {
   const db = getDb();
+  const existing = db
+    .prepare('SELECT * FROM judges WHERE LOWER(TRIM(full_name)) = LOWER(TRIM(?))')
+    .get(input.fullName) as { id: string; full_name: string; role: string } | undefined;
+  if (existing) return { id: existing.id, fullName: existing.full_name, role: existing.role as Judge['role'] };
+
   const id = uuid();
   db.prepare('INSERT INTO judges (id, full_name, role) VALUES (?, ?, ?)').run(id, input.fullName, input.role);
   return { id, ...input };
@@ -163,8 +179,27 @@ export function listLawyers(): Lawyer[] {
   }));
 }
 
+/**
+ * Same duplicate-row problem as createJudge: the defendant modal only
+ * collects a free-text name (no real bar number is entered yet, so matching
+ * on bar_number isn't useful today). Match by name until the UI collects a
+ * real bar number, at which point that should become the dedup key instead.
+ */
 export function createLawyer(input: Omit<Lawyer, 'id'>): Lawyer {
   const db = getDb();
+  const existing = db
+    .prepare('SELECT * FROM lawyers WHERE LOWER(TRIM(full_name)) = LOWER(TRIM(?))')
+    .get(input.fullName) as { id: string; full_name: string; bar_number: string; phone: string | null; email: string | null } | undefined;
+  if (existing) {
+    return {
+      id: existing.id,
+      fullName: existing.full_name,
+      barNumber: existing.bar_number,
+      phone: existing.phone ?? undefined,
+      email: existing.email ?? undefined,
+    };
+  }
+
   const id = uuid();
   db.prepare('INSERT INTO lawyers (id, full_name, bar_number, phone, email) VALUES (?, ?, ?, ?, ?)').run(
     id,
@@ -211,16 +246,31 @@ function mapDefendant(row: DefendantRow, lawyerIds: string[]): Defendant {
   };
 }
 
+/** `?` placeholders for a dynamic-length IN clause; better-sqlite3 has no array binding. */
+function inPlaceholders(n: number): string {
+  return Array(n).fill('?').join(',');
+}
+
 export function listDefendantsByCase(caseId: string): Defendant[] {
   const db = getDb();
   const rows = db
     .prepare('SELECT * FROM defendants WHERE case_id = ? ORDER BY full_name')
     .all(caseId) as DefendantRow[];
-  const lawyerStmt = db.prepare('SELECT lawyer_id FROM defendant_lawyers WHERE defendant_id = ?');
-  return rows.map((row) => {
-    const lawyerIds = (lawyerStmt.all(row.id) as { lawyer_id: string }[]).map((r) => r.lawyer_id);
-    return mapDefendant(row, lawyerIds);
-  });
+  if (rows.length === 0) return [];
+
+  // One batched lookup for every row's lawyer ids instead of one query per
+  // defendant — the matrix/dashboard pages render hundreds of these rows.
+  const lawyerIdsByDefendant = new Map<string, string[]>();
+  const lawyerRows = db
+    .prepare(`SELECT defendant_id, lawyer_id FROM defendant_lawyers WHERE defendant_id IN (${inPlaceholders(rows.length)})`)
+    .all(...rows.map((r) => r.id)) as { defendant_id: string; lawyer_id: string }[];
+  for (const lr of lawyerRows) {
+    const list = lawyerIdsByDefendant.get(lr.defendant_id) ?? [];
+    list.push(lr.lawyer_id);
+    lawyerIdsByDefendant.set(lr.defendant_id, list);
+  }
+
+  return rows.map((row) => mapDefendant(row, lawyerIdsByDefendant.get(row.id) ?? []));
 }
 
 export function getDefendant(defendantId: string): Defendant | null {
@@ -241,28 +291,31 @@ export function createDefendant(input: Omit<Defendant, 'id' | 'createdAt' | 'upd
   const db = getDb();
   const id = uuid();
   const now = nowIso();
-  db.prepare(
-    `INSERT INTO defendants (id, case_id, full_name, alias_hidden, national_id, nationality, date_of_birth,
-       role, custody_status, created_at, updated_at)
-     VALUES (@id, @caseId, @fullName, @aliasHidden, @nationalId, @nationality, @dateOfBirth, @role,
-       @custodyStatus, @createdAt, @updatedAt)`,
-  ).run({
-    id,
-    caseId: input.caseId,
-    fullName: input.fullName,
-    aliasHidden: fromBool(input.aliasHidden),
-    nationalId: input.nationalId ?? null,
-    nationality: input.nationality ?? null,
-    dateOfBirth: input.dateOfBirth ?? null,
-    role: input.role,
-    custodyStatus: input.custodyStatus,
-    createdAt: now,
-    updatedAt: now,
+  const txn = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO defendants (id, case_id, full_name, alias_hidden, national_id, nationality, date_of_birth,
+         role, custody_status, created_at, updated_at)
+       VALUES (@id, @caseId, @fullName, @aliasHidden, @nationalId, @nationality, @dateOfBirth, @role,
+         @custodyStatus, @createdAt, @updatedAt)`,
+    ).run({
+      id,
+      caseId: input.caseId,
+      fullName: input.fullName,
+      aliasHidden: fromBool(input.aliasHidden),
+      nationalId: input.nationalId ?? null,
+      nationality: input.nationality ?? null,
+      dateOfBirth: input.dateOfBirth ?? null,
+      role: input.role,
+      custodyStatus: input.custodyStatus,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const insertLawyer = db.prepare(
+      'INSERT OR IGNORE INTO defendant_lawyers (defendant_id, lawyer_id) VALUES (?, ?)',
+    );
+    for (const lawyerId of input.lawyerIds) insertLawyer.run(id, lawyerId);
   });
-  const insertLawyer = db.prepare(
-    'INSERT OR IGNORE INTO defendant_lawyers (defendant_id, lawyer_id) VALUES (?, ?)',
-  );
-  for (const lawyerId of input.lawyerIds) insertLawyer.run(id, lawyerId);
+  txn();
   return getDefendant(id)!;
 }
 
@@ -301,6 +354,31 @@ export function listChargesByDefendant(defendantId: string): Charge[] {
     severityTier: r.severity_tier,
     maxPenaltyDescription: r.max_penalty_description,
   }));
+}
+
+/** Batched form of listChargesByDefendant for N defendants in one query — used by the dashboard and the defendant matrix to avoid one query per row. */
+export function listChargesByDefendantIds(defendantIds: string[]): Map<string, Charge[]> {
+  const result = new Map<string, Charge[]>();
+  if (defendantIds.length === 0) return result;
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT * FROM charges WHERE defendant_id IN (${inPlaceholders(defendantIds.length)})`)
+    .all(...defendantIds) as any[];
+  for (const r of rows) {
+    const charge: Charge = {
+      id: r.id,
+      caseId: r.case_id,
+      defendantId: r.defendant_id,
+      qualification: r.qualification,
+      articleReferences: toJsonArray(r.article_references),
+      severityTier: r.severity_tier,
+      maxPenaltyDescription: r.max_penalty_description,
+    };
+    const list = result.get(charge.defendantId) ?? [];
+    list.push(charge);
+    result.set(charge.defendantId, list);
+  }
+  return result;
 }
 
 export function createCharge(input: Omit<Charge, 'id'>): Charge {
@@ -345,31 +423,64 @@ export function listDetentionEventsByDefendant(defendantId: string): DetentionEv
   }));
 }
 
+/** Batched form of listDetentionEventsByDefendant — see listChargesByDefendantIds. */
+export function listDetentionEventsByDefendantIds(defendantIds: string[]): Map<string, DetentionEvent[]> {
+  const result = new Map<string, DetentionEvent[]>();
+  if (defendantIds.length === 0) return result;
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM detention_records WHERE defendant_id IN (${inPlaceholders(defendantIds.length)}) ORDER BY start_date`,
+    )
+    .all(...defendantIds) as any[];
+  for (const r of rows) {
+    const event: DetentionEvent = {
+      id: r.id,
+      defendantId: r.defendant_id,
+      caseId: r.case_id,
+      type: r.type,
+      orderedBy: r.ordered_by,
+      startDate: r.start_date,
+      durationMonths: r.duration_months,
+      notificationDate: r.notification_date ?? undefined,
+      documentId: r.document_id ?? undefined,
+      createdAt: r.created_at,
+    };
+    const list = result.get(event.defendantId) ?? [];
+    list.push(event);
+    result.set(event.defendantId, list);
+  }
+  return result;
+}
+
 export function createDetentionEvent(input: Omit<DetentionEvent, 'id' | 'createdAt'>): DetentionEvent {
   const db = getDb();
   const id = uuid();
   const createdAt = nowIso();
-  db.prepare(
-    `INSERT INTO detention_records (id, defendant_id, case_id, type, ordered_by, start_date, duration_months,
-       notification_date, document_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    input.defendantId,
-    input.caseId,
-    input.type,
-    input.orderedBy,
-    input.startDate,
-    input.durationMonths,
-    input.notificationDate ?? null,
-    input.documentId ?? null,
-    createdAt,
-  );
-  if (input.type === 'initial_order' || input.type === 'judge_renewal' || input.type === 'chamber_extension') {
-    updateDefendantCustodyStatus(input.defendantId, 'detained');
-  } else if (input.type === 'release') {
-    updateDefendantCustodyStatus(input.defendantId, 'free');
-  }
+  const txn = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO detention_records (id, defendant_id, case_id, type, ordered_by, start_date, duration_months,
+         notification_date, document_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      input.defendantId,
+      input.caseId,
+      input.type,
+      input.orderedBy,
+      input.startDate,
+      input.durationMonths,
+      input.notificationDate ?? null,
+      input.documentId ?? null,
+      createdAt,
+    );
+    if (input.type === 'initial_order' || input.type === 'judge_renewal' || input.type === 'chamber_extension') {
+      updateDefendantCustodyStatus(input.defendantId, 'detained');
+    } else if (input.type === 'release') {
+      updateDefendantCustodyStatus(input.defendantId, 'free');
+    }
+  });
+  txn();
   return { id, createdAt, ...input };
 }
 
@@ -393,25 +504,54 @@ export function listJudicialControlByDefendant(defendantId: string): JudicialCon
   }));
 }
 
+/** Batched form of listJudicialControlByDefendant — see listChargesByDefendantIds. */
+export function listJudicialControlByDefendantIds(defendantIds: string[]): Map<string, JudicialControlMeasureRecord[]> {
+  const result = new Map<string, JudicialControlMeasureRecord[]>();
+  if (defendantIds.length === 0) return result;
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT * FROM judicial_control WHERE defendant_id IN (${inPlaceholders(defendantIds.length)})`)
+    .all(...defendantIds) as any[];
+  for (const r of rows) {
+    const measure: JudicialControlMeasureRecord = {
+      id: r.id,
+      defendantId: r.defendant_id,
+      caseId: r.case_id,
+      measureCode: r.measure_code,
+      imposedDate: r.imposed_date,
+      reviewDate: r.review_date ?? undefined,
+      active: toBool(r.active),
+      notes: r.notes ?? undefined,
+    };
+    const list = result.get(measure.defendantId) ?? [];
+    list.push(measure);
+    result.set(measure.defendantId, list);
+  }
+  return result;
+}
+
 export function createJudicialControlMeasure(
   input: Omit<JudicialControlMeasureRecord, 'id'>,
 ): JudicialControlMeasureRecord {
   const db = getDb();
   const id = uuid();
-  db.prepare(
-    `INSERT INTO judicial_control (id, defendant_id, case_id, measure_code, imposed_date, review_date, active, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    input.defendantId,
-    input.caseId,
-    input.measureCode,
-    input.imposedDate,
-    input.reviewDate ?? null,
-    fromBool(input.active),
-    input.notes ?? null,
-  );
-  updateDefendantCustodyStatus(input.defendantId, 'judicial_control');
+  const txn = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO judicial_control (id, defendant_id, case_id, measure_code, imposed_date, review_date, active, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      input.defendantId,
+      input.caseId,
+      input.measureCode,
+      input.imposedDate,
+      input.reviewDate ?? null,
+      fromBool(input.active),
+      input.notes ?? null,
+    );
+    updateDefendantCustodyStatus(input.defendantId, 'judicial_control');
+  });
+  txn();
   return { id, ...input };
 }
 
@@ -551,23 +691,82 @@ export function createProtectedWitness(
   return { id, createdAt, ...input };
 }
 
-/** Explicit, audited access to a protected witness's real identity. */
+// ---------------------------------------------------------------------------
+// Reveal PIN (gates protected-witness identity access — Arts. 128/132/133/138)
+// ---------------------------------------------------------------------------
+
+function hashPin(pin: string, salt: Buffer): Buffer {
+  return scryptSync(pin, salt, 64);
+}
+
+export function isRevealPinSet(): boolean {
+  const db = getDb();
+  return !!db.prepare('SELECT 1 FROM security_settings WHERE id = 1').get();
+}
+
+export function setRevealPin(pin: string): void {
+  const db = getDb();
+  const salt = randomBytes(16);
+  const hash = hashPin(pin, salt);
+  const now = nowIso();
+  db.prepare(
+    `INSERT INTO security_settings (id, reveal_pin_hash, reveal_pin_salt, created_at, updated_at)
+     VALUES (1, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET reveal_pin_hash = excluded.reveal_pin_hash,
+       reveal_pin_salt = excluded.reveal_pin_salt, updated_at = excluded.updated_at`,
+  ).run(hash.toString('hex'), salt.toString('hex'), now, now);
+}
+
+function verifyRevealPin(pin: string): boolean {
+  const db = getDb();
+  const row = db.prepare('SELECT reveal_pin_hash, reveal_pin_salt FROM security_settings WHERE id = 1').get() as
+    | { reveal_pin_hash: string; reveal_pin_salt: string }
+    | undefined;
+  if (!row) return false;
+  const salt = Buffer.from(row.reveal_pin_salt, 'hex');
+  const expected = Buffer.from(row.reveal_pin_hash, 'hex');
+  const actual = hashPin(pin, salt);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+/**
+ * Explicit, audited, PIN-gated access to a protected witness's real identity.
+ * The PIN is verified here, in the main process, so a compromised or
+ * modified renderer cannot bypass the gate by calling the IPC channel
+ * directly with just a userId — the previous state of this function.
+ * Every attempt (successful or not) is logged.
+ */
 export function revealProtectedWitnessIdentity(
   sealedFileRef: string,
   accessedByUserId: string,
+  pin: string,
 ): { fullName: string; address?: string; nationalId?: string } | null {
   const db = getDb();
+  const pinOk = isRevealPinSet() && verifyRevealPin(pin);
+
   const row = db
     .prepare('SELECT * FROM witness_sealed_identity WHERE sealed_file_ref = ?')
     .get(sealedFileRef) as any;
   if (!row) return null;
 
-  const log = toJsonArray(row.access_log) as unknown as { userId: string; timestamp: string }[];
-  log.push({ userId: accessedByUserId, timestamp: nowIso() });
-  db.prepare('UPDATE witness_sealed_identity SET access_log = ? WHERE sealed_file_ref = ?').run(
-    JSON.stringify(log),
-    sealedFileRef,
-  );
+  const txn = db.transaction(() => {
+    const current = db
+      .prepare('SELECT access_log FROM witness_sealed_identity WHERE sealed_file_ref = ?')
+      .get(sealedFileRef) as { access_log: string };
+    const log = toJsonArray(current.access_log) as unknown as {
+      userId: string;
+      timestamp: string;
+      granted: boolean;
+    }[];
+    log.push({ userId: accessedByUserId, timestamp: nowIso(), granted: pinOk });
+    db.prepare('UPDATE witness_sealed_identity SET access_log = ? WHERE sealed_file_ref = ?').run(
+      JSON.stringify(log),
+      sealedFileRef,
+    );
+  });
+  txn();
+
+  if (!pinOk) return null;
 
   return {
     fullName: row.real_full_name,
@@ -732,16 +931,32 @@ export function computeDashboardStats(): DashboardStats {
   const risks: DashboardStats['upcomingReleaseRisks'] = [];
   let totalDefendants = 0;
 
+  // listDefendantsByCase is already batched internally; the N+1 this
+  // dashboard used to pay for was one charges query and one detention-events
+  // query PER DETAINED DEFENDANT, system-wide, on every single dashboard
+  // load. Collect every case's defendants first, then fetch both in one
+  // batched query each for every detained defendant across all cases.
+  const defendantsByCaseId = new Map<string, Defendant[]>();
+  const detainedIds: string[] = [];
   for (const c of cases) {
     const defendants = listDefendantsByCase(c.id);
+    defendantsByCaseId.set(c.id, defendants);
     totalDefendants += defendants.length;
     for (const d of defendants) {
       custodyCounts[d.custodyStatus] += 1;
+      if (d.custodyStatus === 'detained') detainedIds.push(d.id);
+    }
+  }
+  const chargesByDefendant = listChargesByDefendantIds(detainedIds);
+  const eventsByDefendant = listDetentionEventsByDefendantIds(detainedIds);
+
+  for (const c of cases) {
+    for (const d of defendantsByCaseId.get(c.id) ?? []) {
       if (d.custodyStatus !== 'detained') continue;
 
-      const charges = listChargesByDefendant(d.id);
-      const tier = charges[0]?.severityTier ?? 'ordinary';
-      const events = listDetentionEventsByDefendant(d.id);
+      const charges = chargesByDefendant.get(d.id) ?? [];
+      const tier = selectGoverningCharge(charges)?.severityTier ?? 'ordinary';
+      const events = eventsByDefendant.get(d.id) ?? [];
       const status = computeDetentionStatus(events, tier, {
         chamberExtensionEligible: c.isTransnational && c.requiresForensicOrCrossBorder,
       });
@@ -788,7 +1003,6 @@ export interface DefendantMatrixRow {
 }
 
 export function getDefendantMatrix(caseId: string): DefendantMatrixRow[] {
-  const db = getDb();
   const theCase = getCase(caseId);
   const chamberExtensionEligible = Boolean(theCase?.isTransnational && theCase?.requiresForensicOrCrossBorder);
 
@@ -796,14 +1010,21 @@ export function getDefendantMatrix(caseId: string): DefendantMatrixRow[] {
   const lawyers = listLawyers();
   const lawyerNameById = new Map(lawyers.map((l) => [l.id, l.fullName]));
 
+  // One batched query per data kind for the whole case instead of 3 queries
+  // per defendant — this table is built for "hundreds of defendants" scale.
+  const defendantIds = defendants.map((d) => d.id);
+  const chargesByDefendant = listChargesByDefendantIds(defendantIds);
+  const eventsByDefendant = listDetentionEventsByDefendantIds(defendantIds);
+  const jcMeasuresByDefendant = listJudicialControlByDefendantIds(defendantIds);
+
   return defendants.map((defendant) => {
-    const charges = listChargesByDefendant(defendant.id);
-    const primaryCharge = charges[0] ?? null;
+    const charges = chargesByDefendant.get(defendant.id) ?? [];
+    const primaryCharge = selectGoverningCharge(charges);
 
     let detentionAlertLevel: string | null = null;
     let detentionDaysRemaining: number | null = null;
     if (defendant.custodyStatus === 'detained') {
-      const events = listDetentionEventsByDefendant(defendant.id);
+      const events = eventsByDefendant.get(defendant.id) ?? [];
       const status = computeDetentionStatus(events, primaryCharge?.severityTier ?? 'ordinary', {
         chamberExtensionEligible,
       });
@@ -811,7 +1032,7 @@ export function getDefendantMatrix(caseId: string): DefendantMatrixRow[] {
       detentionDaysRemaining = status.daysRemaining;
     }
 
-    const jcMeasures = defendant.custodyStatus === 'judicial_control' ? listJudicialControlByDefendant(defendant.id) : [];
+    const jcMeasures = defendant.custodyStatus === 'judicial_control' ? (jcMeasuresByDefendant.get(defendant.id) ?? []) : [];
 
     return {
       defendant,

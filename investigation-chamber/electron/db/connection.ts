@@ -49,13 +49,16 @@ function getOrCreateEncryptionKey(): string {
 
   if (isElectronRuntime) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { safeStorage } = require('electron') as typeof import('electron');
+    const { app, safeStorage } = require('electron') as typeof import('electron');
     if (!safeStorage.isEncryptionAvailable()) {
       // Narrow, explicit-opt-in escape hatch for headless Linux CI/dev
       // containers with no OS keyring service at all (no DPAPI-equivalent
-      // exists there to fall back to). Requires an env var no production
-      // Windows install would ever set, so default behavior stays fail-closed.
-      if (process.env.IC_ALLOW_INSECURE_DEV_KEY === '1') {
+      // exists there to fall back to). Gated on `!app.isPackaged` so it is
+      // structurally impossible to trigger in a real installed build, no
+      // matter what environment variables happen to be set on the host —
+      // an env-var-only gate is not a real control once the app is
+      // packaged and running on a judicial office's Windows machine.
+      if (!app.isPackaged && process.env.IC_ALLOW_INSECURE_DEV_KEY === '1') {
         console.warn(
           '[investigation-chamber] IC_ALLOW_INSECURE_DEV_KEY=1: OS keychain unavailable, using an UNENCRYPTED-AT-REST dev key file. Never use this in production.',
         );
@@ -98,15 +101,17 @@ export function getDb(): Database.Database {
   const db = new Database(dbPath);
   const key = getOrCreateEncryptionKey();
 
-  // AES-256 page encryption via SQLCipher-compatible cipher. Order matters:
-  // select the cipher provider, set the key (which opens/initializes the
-  // encrypted header), *then* the hardening pragmas — setting them before
-  // `key` is a no-op on some SQLCipher builds since there is no active
-  // cipher context yet to configure.
+  // AES-256 page encryption via SQLCipher-compatible cipher. This exact
+  // sequence — cipher, then `legacy=4`, then key — is the library's own
+  // documented recipe (better-sqlite3-multiple-ciphers README, "legacy
+  // SQLCipher" section): `legacy=4` atomically pins the full SQLCipher-v4
+  // parameter set (page size, KDF algorithm/iterations, HMAC algorithm) to
+  // a known, consistent profile in one step, rather than hand-setting a
+  // couple of the ~9 relevant parameters and leaving the rest to whatever
+  // the compiled native module's internal defaults happen to be.
   db.pragma("cipher='sqlcipher'");
+  db.pragma('legacy=4');
   db.pragma(`key='${key}'`);
-  db.pragma('cipher_page_size=4096');
-  db.pragma("cipher_hmac_algorithm='HMAC_SHA512'");
 
   // Touch the database now, not lazily: a wrong/corrupt key doesn't fail on
   // `key=` itself (that only sets the context) — it fails on the first real

@@ -2,7 +2,7 @@ import {
   DETENTION,
   DETENTION_ALERT_THRESHOLDS_DAYS,
 } from '../legal/articles';
-import { normalizeZero } from './mathUtils';
+import { addMonths, normalizeZero } from './mathUtils';
 import type { CrimeSeverityTier, DetentionAlertLevel, DetentionEvent } from '../types';
 
 export interface DetentionTimelineSegment {
@@ -39,13 +39,6 @@ export interface DetentionStatus {
   isAtMaximum: boolean;
   /** Populated when the timeline itself violates Arts. 204/205 (should never happen with a compliant UI, but the engine must never silently accept it). */
   violations: string[];
-}
-
-function addMonths(date: Date, months: number): Date {
-  const result = new Date(date.getTime());
-  const targetMonth = result.getMonth() + months;
-  result.setMonth(targetMonth);
-  return result;
 }
 
 function maxJudgeRenewals(tier: CrimeSeverityTier): number {
