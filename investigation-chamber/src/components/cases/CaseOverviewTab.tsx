@@ -4,10 +4,18 @@ import { useAsync } from '../../hooks/useAsync';
 import { formatDate, formatMoney, seizureStatusLabel } from '../../lib/format';
 import ErrorState from '../common/ErrorState';
 import RevealWitnessIdentityModal from './RevealWitnessIdentityModal';
+import NewInterceptionModal from './NewInterceptionModal';
+import NewInfiltrationModal from './NewInfiltrationModal';
+import NewSeizureModal from './NewSeizureModal';
+import NewProtectedWitnessModal from './NewProtectedWitnessModal';
 import type { Case, InfiltrationRecord, InterceptionRecord, Judge, ProtectedWitness, SeizureRecord } from '../../../shared/types';
 
 export default function CaseOverviewTab({ caseId }: { caseId: string }) {
   const [revealTarget, setRevealTarget] = useState<ProtectedWitness | null>(null);
+  const [showNewInterception, setShowNewInterception] = useState(false);
+  const [showNewInfiltration, setShowNewInfiltration] = useState(false);
+  const [showNewSeizure, setShowNewSeizure] = useState(false);
+  const [showNewWitness, setShowNewWitness] = useState(false);
   const { data: theCase, error, reload } = useAsync<Case | null>(() => api.cases.get(caseId), [caseId]);
   const { data: judges, error: judgesError, reload: reloadJudges } = useAsync<Judge[]>(() => api.judges.list(), []);
   const { data: interceptions, error: interceptionsError, reload: reloadInterceptions } = useAsync<InterceptionRecord[]>(() => api.interceptions.listByCase(caseId), [caseId]);
@@ -77,7 +85,12 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <div className="card" style={{ padding: 18, flex: '1 1 320px' }}>
-          <h3 style={{ fontSize: 14, margin: '0 0 10px' }}>التنصت والاعتراضات (م. 114، 116)</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: 14, margin: '0 0 10px' }}>التنصت والاعتراضات (م. 114، 116)</h3>
+            <button type="button" className="btn btn-sm" onClick={() => setShowNewInterception(true)}>
+              + تنصت
+            </button>
+          </div>
           {(interceptions ?? []).length === 0 ? (
             <p className="text-muted" style={{ fontSize: 12.5 }}>لا توجد عمليات تنصت مسجلة.</p>
           ) : (
@@ -89,7 +102,12 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
               ))}
             </ul>
           )}
-          <h4 style={{ fontSize: 12.5, margin: '14px 0 6px' }}>التسرب (م. 120-126)</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+            <h4 style={{ fontSize: 12.5, margin: '0 0 6px' }}>التسرب (م. 120-126)</h4>
+            <button type="button" className="btn btn-sm" onClick={() => setShowNewInfiltration(true)}>
+              + تسرب
+            </button>
+          </div>
           {(infiltrations ?? []).length === 0 ? (
             <p className="text-muted" style={{ fontSize: 12.5 }}>لا توجد عمليات تسرب مسجلة.</p>
           ) : (
@@ -104,7 +122,12 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
         </div>
 
         <div className="card" style={{ padding: 18, flex: '1 1 320px' }}>
-          <h3 style={{ fontSize: 14, margin: '0 0 10px' }}>الحجز وتجميد الأموال (م. 50-52، 71)</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: 14, margin: '0 0 10px' }}>الحجز وتجميد الأموال (م. 50-52، 71)</h3>
+            <button type="button" className="btn btn-sm" onClick={() => setShowNewSeizure(true)}>
+              + حجز
+            </button>
+          </div>
           {(seizures ?? []).length === 0 ? (
             <p className="text-muted" style={{ fontSize: 12.5 }}>لا توجد أصول محجوزة.</p>
           ) : (
@@ -130,7 +153,12 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
         </div>
 
         <div className="card" style={{ padding: 18, flex: '1 1 320px' }}>
-          <h3 style={{ fontSize: 14, margin: '0 0 10px' }}>الشهود والمخبرون المحميون (م. 128-138)</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: 14, margin: '0 0 10px' }}>الشهود والمخبرون المحميون (م. 128-138)</h3>
+            <button type="button" className="btn btn-sm" onClick={() => setShowNewWitness(true)}>
+              + شاهد
+            </button>
+          </div>
           {(witnesses ?? []).length === 0 ? (
             <p className="text-muted" style={{ fontSize: 12.5 }}>لا يوجد شهود محميون.</p>
           ) : (
@@ -169,6 +197,46 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
           sealedFileRef={revealTarget.sealedFileRef}
           pseudonym={revealTarget.pseudonym}
           onClose={() => setRevealTarget(null)}
+        />
+      )}
+      {showNewInterception && (
+        <NewInterceptionModal
+          caseId={caseId}
+          onClose={() => setShowNewInterception(false)}
+          onCreated={() => {
+            setShowNewInterception(false);
+            reloadInterceptions();
+          }}
+        />
+      )}
+      {showNewInfiltration && (
+        <NewInfiltrationModal
+          caseId={caseId}
+          onClose={() => setShowNewInfiltration(false)}
+          onCreated={() => {
+            setShowNewInfiltration(false);
+            reloadInfiltrations();
+          }}
+        />
+      )}
+      {showNewSeizure && (
+        <NewSeizureModal
+          caseId={caseId}
+          onClose={() => setShowNewSeizure(false)}
+          onCreated={() => {
+            setShowNewSeizure(false);
+            reloadSeizures();
+          }}
+        />
+      )}
+      {showNewWitness && (
+        <NewProtectedWitnessModal
+          caseId={caseId}
+          onClose={() => setShowNewWitness(false)}
+          onCreated={() => {
+            setShowNewWitness(false);
+            reloadWitnesses();
+          }}
         />
       )}
     </div>

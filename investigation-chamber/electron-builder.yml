@@ -19,6 +19,12 @@ files:
   - dist/**
   - dist-electron/**
   - package.json
+  # Dev-only: seeds the DB with a 60-defendant mock case for demos/testing.
+  # Not referenced by main.js, but there is no reason to ship it in a
+  # production install — exclude it rather than leave a working path that
+  # could overwrite real case data if ever invoked by mistake.
+  - '!dist-electron/electron/seedRunner.js'
+  - '!dist-electron/electron/db/seed.js'
 
 win:
   target:

@@ -1,6 +1,10 @@
 import { AlignmentType, Document, Packer, Paragraph, TextRun } from 'docx';
 import { formatDate } from '../format';
+import { APPEAL_WINDOW_DAYS } from '../../../shared/legal/articles';
 import { TEMPLATE_TITLES, type DocumentTemplateCode, type OrderContext } from './templates';
+
+const APPEAL_NOTICE = `يحق للمتهم أو محاميه الطعن في هذا الأمر خلال أجل ${APPEAL_WINDOW_DAYS} أيام من تاريخ تبليغه أو العلم به، طبقا للمادة 268 من قانون الإجراءات الجزائية.`;
+const APPEALABLE_CODES: DocumentTemplateCode[] = ['DETENTION_ORDER', 'JUDICIAL_CONTROL_ORDER', 'CHAMBER_EXTENSION_REQUEST'];
 
 function para(text: string, opts: { bold?: boolean; size?: number; underline?: boolean } = {}): Paragraph {
   return new Paragraph({
@@ -24,6 +28,13 @@ function bodyParagraphs(code: DocumentTemplateCode, ctx: OrderContext): Paragrap
   const name = ctx.defendant
     ? `في حق المدعو(ة): ${ctx.defendant.fullName}${ctx.defendant.nationalId ? ` — رقم التعريف: ${ctx.defendant.nationalId}` : ''}`
     : '';
+  // theCase.legalQualifications (rendered separately, above) can list charges
+  // that don't apply to every defendant in a multi-defendant file — this is
+  // the defendant's own governing charge.
+  const charge =
+    ctx.defendant && ctx.defendantCharge
+      ? `التوصيف القانوني المنسوب إليه: ${ctx.defendantCharge.qualification} (المواد ${ctx.defendantCharge.articleReferences.join('، ')})`
+      : '';
 
   const lines: string[] = [];
   switch (code) {
@@ -33,17 +44,19 @@ function bodyParagraphs(code: DocumentTemplateCode, ctx: OrderContext): Paragrap
         'بناء على أحكام المواد 204 وما يليها من قانون الإجراءات الجزائية (القانون رقم 25-14)،',
         `وبعد الاطلاع على أوراق ملف القضية رقم ${ctx.theCase.caseNumber}،`,
         name,
+        charge,
         'نأمر بإيداع المسمى (ة) أعلاه المؤسسة العقابية لمدة أربعة (4) أشهر ابتداء من تاريخ هذا الأمر.',
       );
       break;
     case 'APPEARANCE_ORDER':
-      lines.push('نأمر القوة العمومية بإحضار المدعو(ة) أدناه أمام قاضي التحقيق فورا.', name);
+      lines.push('نأمر القوة العمومية بإحضار المدعو(ة) أدناه أمام قاضي التحقيق فورا.', name, charge);
       break;
     case 'ARREST_WARRANT':
       lines.push(
         'بناء على أحكام المادة 193 من قانون الإجراءات الجزائية،',
         'حيث إن المدعو(ة) أدناه في حالة فرار ولم يمتثل للاستدعاءات الموجهة إليه،',
         name,
+        charge,
         'نأمر جميع أعوان القوة العمومية بالبحث عن المسمى (ة) أعلاه والقبض عليه وتقديمه فورا.',
       );
       break;
@@ -51,6 +64,7 @@ function bodyParagraphs(code: DocumentTemplateCode, ctx: OrderContext): Paragrap
       lines.push(
         'بناء على أحكام المواد 198 إلى 200 من قانون الإجراءات الجزائية،',
         name,
+        charge,
         'نأمر بوضع المسمى (ة) أعلاه تحت الرقابة القضائية، وإلزامه بالتدابير المبينة في الملحق المرفق بهذا الأمر.',
       );
       break;
@@ -66,16 +80,20 @@ function bodyParagraphs(code: DocumentTemplateCode, ctx: OrderContext): Paragrap
         'نظرا لاستنفاد آجال التمديد المخولة لقاضي التحقيق طبقا للمادة 204،',
         `ونظرا للطابع العابر للحدود الوطنية للجريمة موضوع الملف رقم ${ctx.theCase.caseNumber}،`,
         name,
+        charge,
         'نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 205.',
       );
       break;
     case 'SUMMONS':
-      lines.push('ندعو المدعو(ة) أدناه للحضور شخصيا أمام قاضي التحقيق بغرفة التحقيق.', name);
+      lines.push('ندعو المدعو(ة) أدناه للحضور شخصيا أمام قاضي التحقيق بغرفة التحقيق.', name, charge);
       break;
     case 'HEARING_NOTICE':
-      lines.push(`نعلم المدعو(ة) أدناه ودفاعه بموعد جلسة الاستماع الجماعية المقررة في إطار القضية رقم ${ctx.theCase.caseNumber}.`, name);
+      lines.push(`نعلم المدعو(ة) أدناه ودفاعه بموعد جلسة الاستماع الجماعية المقررة في إطار القضية رقم ${ctx.theCase.caseNumber}.`, name, charge);
       break;
   }
+
+  lines.push(...(ctx.extraLines ?? []));
+  if (APPEALABLE_CODES.includes(code)) lines.push(APPEAL_NOTICE);
 
   return lines.filter(Boolean).map((l) => para(l));
 }

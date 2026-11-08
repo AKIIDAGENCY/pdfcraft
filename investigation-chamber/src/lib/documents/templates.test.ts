@@ -45,3 +45,29 @@ describe('renderOrderHtml — HTML escaping of free-text fields', () => {
     expect(html).not.toContain('<script>evil()</script>');
   });
 });
+
+describe('renderOrderHtml — Art. 268 appeal notice', () => {
+  it('includes the appeal notice on a detention order', () => {
+    const html = renderOrderHtml('DETENTION_ORDER', { theCase: BASE_CASE, judgeName: 'قاضي', issueDate: new Date('2026-01-01') });
+    expect(html).toContain('268');
+  });
+
+  it('does not include the appeal notice on a document type with no liberty-affecting decision', () => {
+    const html = renderOrderHtml('HEARING_NOTICE', { theCase: BASE_CASE, judgeName: 'قاضي', issueDate: new Date('2026-01-01') });
+    expect(html).not.toContain('268');
+  });
+});
+
+describe('renderOrderHtml — defendant-specific governing charge', () => {
+  it('renders the defendant own charge separately from the case-level qualifications', () => {
+    const html = renderOrderHtml('DETENTION_ORDER', {
+      theCase: { caseNumber: '1/2026', title: 't', legalQualifications: ['تمويل الإرهاب', 'تبييض الأموال'] },
+      defendant: { fullName: 'محمد', nationality: 'جزائرية', dateOfBirth: '2000-01-01', role: 'accomplice' },
+      defendantCharge: { qualification: 'تبييض الأموال', articleReferences: ['389'] },
+      judgeName: 'قاضي',
+      issueDate: new Date('2026-01-01'),
+    });
+    expect(html).toContain('تبييض الأموال');
+    expect(html).toContain('389');
+  });
+});

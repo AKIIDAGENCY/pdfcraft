@@ -1,4 +1,5 @@
 import { formatDate } from '../format';
+import { APPEAL_WINDOW_DAYS } from '../../../shared/legal/articles';
 import type { Case, Defendant } from '../../../shared/types';
 
 /**
@@ -42,10 +43,20 @@ export const TEMPLATE_TITLES: Record<DocumentTemplateCode, string> = {
 export interface OrderContext {
   theCase: Pick<Case, 'caseNumber' | 'title' | 'legalQualifications'>;
   defendant?: Pick<Defendant, 'fullName' | 'nationalId' | 'nationality' | 'dateOfBirth' | 'role'>;
+  /**
+   * The defendant's own governing charge (Art. 204's aggravated bracket
+   * applies per-defendant, not per-case) — distinct from theCase's general
+   * legalQualifications, which can list charges that don't apply to every
+   * defendant in a multi-defendant file.
+   */
+  defendantCharge?: { qualification: string; articleReferences: string[] };
   judgeName: string;
   issueDate: Date;
   extraLines?: string[];
 }
+
+/** Art. 268 — appeal window for the defendant/civil party, in days. */
+const APPEAL_NOTICE = `يحق للمتهم أو محاميه الطعن في هذا الأمر خلال أجل ${APPEAL_WINDOW_DAYS} أيام من تاريخ تبليغه أو العلم به، طبقا للمادة 268 من قانون الإجراءات الجزائية.`;
 
 function letterheadHtml(): string {
   return `
@@ -60,8 +71,10 @@ function letterheadHtml(): string {
 function bodyForTemplate(code: DocumentTemplateCode, ctx: OrderContext): string {
   const d = ctx.defendant;
   const nameBlock = d
-    ? `<p><strong>في حق المدعو(ة):</strong> ${escapeHtml(d.fullName)} ${d.nationalId ? `— رقم التعريف: ${escapeHtml(d.nationalId)}` : ''}</p>`
+    ? `<p><strong>في حق المدعو(ة):</strong> ${escapeHtml(d.fullName)} ${d.nationalId ? `— رقم التعريف: ${escapeHtml(d.nationalId)}` : ''}</p>
+       ${ctx.defendantCharge ? `<p><strong>التوصيف القانوني المنسوب إليه:</strong> ${escapeHtml(ctx.defendantCharge.qualification)} (المواد ${escapeHtml(ctx.defendantCharge.articleReferences.join('، '))})</p>` : ''}`
     : '';
+  const appealNotice = `<p style="font-size: 11pt; color: #445;">${escapeHtml(APPEAL_NOTICE)}</p>`;
 
   switch (code) {
     case 'DETENTION_ORDER':
@@ -70,7 +83,8 @@ function bodyForTemplate(code: DocumentTemplateCode, ctx: OrderContext): string 
         <p>بناء على أحكام المواد 204 وما يليها من قانون الإجراءات الجزائية (القانون رقم 25-14)،</p>
         <p>وبعد الاطلاع على أوراق ملف القضية رقم ${escapeHtml(ctx.theCase.caseNumber)}،</p>
         ${nameBlock}
-        <p>نأمر بإيداع المسمى (ة) أعلاه المؤسسة العقابية لمدة أربعة (4) أشهر ابتداء من تاريخ هذا الأمر.</p>`;
+        <p>نأمر بإيداع المسمى (ة) أعلاه المؤسسة العقابية لمدة أربعة (4) أشهر ابتداء من تاريخ هذا الأمر.</p>
+        ${appealNotice}`;
     case 'APPEARANCE_ORDER':
       return `
         <p>نأمر القوة العمومية بإحضار المدعو(ة) أدناه أمام قاضي التحقيق فورا.</p>
@@ -86,7 +100,8 @@ function bodyForTemplate(code: DocumentTemplateCode, ctx: OrderContext): string 
       return `
         <p>بناء على أحكام المواد 198 إلى 200 من قانون الإجراءات الجزائية،</p>
         ${nameBlock}
-        <p>نأمر بوضع المسمى (ة) أعلاه تحت الرقابة القضائية، وإلزامه بالتدابير المبينة في الملحق المرفق بهذا الأمر.</p>`;
+        <p>نأمر بوضع المسمى (ة) أعلاه تحت الرقابة القضائية، وإلزامه بالتدابير المبينة في الملحق المرفق بهذا الأمر.</p>
+        ${appealNotice}`;
     case 'CASE_REFERRAL_ORDER':
       return `
         <p>بعد استيفاء إجراءات التحقيق في القضية رقم ${escapeHtml(ctx.theCase.caseNumber)}،</p>
@@ -97,7 +112,8 @@ function bodyForTemplate(code: DocumentTemplateCode, ctx: OrderContext): string 
         <p>نظرا لاستنفاد آجال التمديد المخولة لقاضي التحقيق طبقا للمادة 204،</p>
         <p>ونظرا للطابع العابر للحدود الوطنية للجريمة موضوع الملف رقم ${escapeHtml(ctx.theCase.caseNumber)} واستلزامه إنابات قضائية دولية وخبرة جنائية،</p>
         ${nameBlock}
-        <p>نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 205.</p>`;
+        <p>نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 205.</p>
+        ${appealNotice}`;
     case 'SUMMONS':
       return `
         <p>ندعو المدعو(ة) أدناه للحضور شخصيا أمام قاضي التحقيق بغرفة التحقيق.</p>

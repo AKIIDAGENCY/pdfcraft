@@ -48,6 +48,17 @@ function createMainWindow(): void {
     return { action: 'deny' };
   });
 
+  // The window should never navigate away from the app's own loaded page —
+  // there is no legitimate in-app link that does that. Blocking it is cheap
+  // defense in depth against any injected content (e.g. via a compromised
+  // dependency) trying to carry the top-level window to an external origin.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const target = new URL(url);
+    const isDevServer = isDev && target.origin === 'http://localhost:5173';
+    const isOwnFile = !isDev && target.protocol === 'file:';
+    if (!isDevServer && !isOwnFile) event.preventDefault();
+  });
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
