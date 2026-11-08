@@ -22,6 +22,12 @@
   --color-alert-overdue-fg: #ffffff;
   --color-alert-inactive-bg: #eceff1;
   --color-alert-inactive-fg: #67737d;
+  /* "Wanted/fugitive" custody status is a different signal from a detention
+     deadline breach — sharing the overdue alert's dark-red pulse made the
+     two unreadable apart at a glance. Purple is otherwise unused by any
+     alert/custody badge. */
+  --color-alert-wanted-bg: #3a0d3a;
+  --color-alert-wanted-fg: #ffffff;
 
   --shadow-1: 0 1px 3px rgba(20, 30, 40, 0.08), 0 1px 2px rgba(20, 30, 40, 0.06);
   --shadow-2: 0 4px 14px rgba(20, 30, 40, 0.12);
@@ -51,6 +57,8 @@
     --color-alert-overdue-fg: #1a0000;
     --color-alert-inactive-bg: #232c34;
     --color-alert-inactive-fg: #8695a1;
+    --color-alert-wanted-bg: #c042ff;
+    --color-alert-wanted-fg: #1a0022;
   }
 }
 
@@ -75,4 +83,6 @@
   --color-alert-overdue-fg: #1a0000;
   --color-alert-inactive-bg: #232c34;
   --color-alert-inactive-fg: #8695a1;
+  --color-alert-wanted-bg: #c042ff;
+  --color-alert-wanted-fg: #1a0022;
 }

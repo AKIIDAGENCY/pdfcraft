@@ -4,6 +4,9 @@ import CaseOverviewTab from '../components/cases/CaseOverviewTab';
 import DefendantMatrix from '../components/defendants/DefendantMatrix';
 import NetworkGraph from '../components/network/NetworkGraph';
 import DocumentGenerator from '../components/documents/DocumentGenerator';
+import { useAsync } from '../hooks/useAsync';
+import { api } from '../lib/api';
+import type { Case } from '../../shared/types';
 
 const TABS = [
   { key: 'overview', label: 'نظرة عامة' },
@@ -18,10 +21,24 @@ export default function CaseDetailPage() {
   const { caseId } = useParams<{ caseId: string }>();
   const [tab, setTab] = useState<TabKey>('overview');
 
+  // The overview tab renders the case title/number as its own card, so
+  // switching to the matrix/network/documents tabs previously lost all
+  // visual confirmation of which case is open — a real risk across a long
+  // session working several cases in sequence.
+  const { data: theCase } = useAsync<Case | null>(() => (caseId ? api.cases.get(caseId) : Promise.resolve(null)), [caseId]);
+
   if (!caseId) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {theCase && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <h1 style={{ fontSize: 16, margin: 0 }}>{theCase.title}</h1>
+          <span className="text-muted" style={{ fontSize: 12.5 }}>
+            رقم الملف: {theCase.caseNumber}
+          </span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--color-border)' }}>
         {TABS.map((t) => (
           <button

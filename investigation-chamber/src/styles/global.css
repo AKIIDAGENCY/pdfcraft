@@ -109,6 +109,11 @@ a {
   color: var(--color-alert-overdue-fg);
   animation: pulse-overdue 1.6s ease-in-out infinite;
 }
+.badge-wanted {
+  background: var(--color-alert-wanted-bg);
+  color: var(--color-alert-wanted-fg);
+  animation: pulse-overdue 1.6s ease-in-out infinite;
+}
 .badge-inactive {
   background: var(--color-alert-inactive-bg);
   color: var(--color-alert-inactive-fg);

@@ -5,7 +5,7 @@ const STYLE: Record<CustodyStatus, string> = {
   free: 'badge-green',
   judicial_control: 'badge-orange',
   detained: 'badge-red',
-  wanted: 'badge-overdue',
+  wanted: 'badge-wanted',
 };
 
 export default function CustodyBadge({ status }: { status: CustodyStatus }) {
