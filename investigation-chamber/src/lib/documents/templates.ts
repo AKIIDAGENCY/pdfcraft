@@ -1,6 +1,23 @@
 import { formatDate } from '../format';
 import { APPEAL_WINDOW_DAYS } from '../../../shared/legal/articles';
+import { CAIRO_ARABIC400_B64, CAIRO_LATIN400_B64, CAIRO_ARABIC700_B64, CAIRO_LATIN700_B64 } from './embeddedFonts.generated';
 import type { Case, Defendant } from '../../../shared/types';
+
+/**
+ * This HTML is rendered in an isolated context — a sandboxed preview iframe
+ * or a data:text/html print window — that cannot reach this app's own
+ * bundled @font-face rules (src/styles/fonts.css). Embedding the font data
+ * directly in the document is the only way the actual court-facing PDF
+ * renders in a proper Arabic typeface everywhere, instead of whatever
+ * fallback font a given Windows install happens to have.
+ */
+function embeddedFontFaceCss(): string {
+  return `
+    @font-face { font-family: 'Cairo'; font-weight: 400; src: url(data:font/woff2;base64,${CAIRO_ARABIC400_B64}) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+    @font-face { font-family: 'Cairo'; font-weight: 400; src: url(data:font/woff2;base64,${CAIRO_LATIN400_B64}) format('woff2'); unicode-range: U+0000-00FF; }
+    @font-face { font-family: 'Cairo'; font-weight: 700; src: url(data:font/woff2;base64,${CAIRO_ARABIC700_B64}) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+    @font-face { font-family: 'Cairo'; font-weight: 700; src: url(data:font/woff2;base64,${CAIRO_LATIN700_B64}) format('woff2'); unicode-range: U+0000-00FF; }`;
+}
 
 /**
  * Every value interpolated below (judge name, defendant name/ID, case
@@ -137,8 +154,9 @@ export function renderOrderHtml(code: DocumentTemplateCode, ctx: OrderContext): 
 <meta charset="utf-8" />
 <title>${title}</title>
 <style>
+  ${embeddedFontFaceCss()}
   @page { size: A4; margin: 22mm 18mm; }
-  body { font-family: 'Segoe UI', 'Cairo', Tahoma, Arial, sans-serif; direction: rtl; color: #14202a; line-height: 1.9; font-size: 13.5pt; }
+  body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #14202a; line-height: 1.9; font-size: 13.5pt; }
   .letterhead { text-align: center; font-weight: 700; margin-bottom: 26px; }
   .letterhead div:first-child { font-size: 14pt; }
   h1 { text-align: center; font-size: 16pt; text-decoration: underline; margin: 24px 0; }

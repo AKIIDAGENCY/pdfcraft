@@ -6,6 +6,13 @@ import { TEMPLATE_TITLES, type DocumentTemplateCode, type OrderContext } from '.
 const APPEAL_NOTICE = `يحق للمتهم أو محاميه الطعن في هذا الأمر خلال أجل ${APPEAL_WINDOW_DAYS} أيام من تاريخ تبليغه أو العلم به، طبقا للمادة 268 من قانون الإجراءات الجزائية.`;
 const APPEALABLE_CODES: DocumentTemplateCode[] = ['DETENTION_ORDER', 'JUDICIAL_CONTROL_ORDER', 'CHAMBER_EXTENSION_REQUEST'];
 
+// Word font name, not a declaration of what to embed: the `docx` package
+// (v9.7.1) has no OOXML font-embedding support, so Cairo's woff2 files
+// (embedded directly in the PDF path below) can't be embedded here. Segoe
+// UI is named instead because it ships on every real Windows install and
+// already has excellent native Arabic glyph coverage — naming a font that
+// isn't actually bundled would be worse, since Word would silently
+// substitute something else on a machine that doesn't have it installed.
 function para(text: string, opts: { bold?: boolean; size?: number; underline?: boolean } = {}): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.RIGHT,

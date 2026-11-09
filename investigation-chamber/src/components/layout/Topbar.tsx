@@ -4,16 +4,17 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { useAsync } from '../../hooks/useAsync';
 import { api } from '../../lib/api';
 import { formatNumber } from '../../lib/format';
+import { SunIcon, MoonIcon, MonitorIcon, WarningIcon } from '../common/icons';
 import type { DetentionAlertLevel } from '../../../shared/types';
 
 interface DashboardStats {
   detentionAlertCounts: Record<DetentionAlertLevel, number>;
 }
 
-const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
-  { value: 'light', label: '☀️ فاتح' },
-  { value: 'dark', label: '🌙 داكن' },
-  { value: 'system', label: '🖥️ النظام' },
+const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; Icon: typeof SunIcon }[] = [
+  { value: 'light', label: 'فاتح', Icon: SunIcon },
+  { value: 'dark', label: 'داكن', Icon: MoonIcon },
+  { value: 'system', label: 'النظام', Icon: MonitorIcon },
 ];
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -48,8 +49,8 @@ export default function Topbar() {
       <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
         نظام إدارة غرفة التحقيق
         {overdueCount > 0 && (
-          <Link to="/" className="badge badge-overdue" style={{ textDecoration: 'none' }}>
-            ⚠ {formatNumber(overdueCount)} حالة تجاوزت الأجل القانوني للحبس
+          <Link to="/" className="badge badge-overdue" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <WarningIcon /> {formatNumber(overdueCount)} حالة تجاوزت الأجل القانوني للحبس
           </Link>
         )}
       </div>
@@ -60,11 +61,15 @@ export default function Topbar() {
             className="btn btn-sm"
             onClick={() => setPreference(opt.value)}
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               background: preference === opt.value ? 'var(--color-accent)' : undefined,
               color: preference === opt.value ? 'var(--color-accent-contrast)' : undefined,
               borderColor: preference === opt.value ? 'var(--color-accent)' : undefined,
             }}
           >
+            <opt.Icon />
             {opt.label}
           </button>
         ))}

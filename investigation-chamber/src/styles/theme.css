@@ -1,5 +1,9 @@
 :root {
-  --font-ui: 'Segoe UI', 'Cairo', 'Tahoma', 'Arial', sans-serif;
+  /* Cairo first: bundled locally (fonts.css), so it renders identically
+     everywhere — online or off, regardless of what Arabic-capable font a
+     given Windows install happens to ship with. The rest are only a
+     fallback for the brief instant before the bundled face is parsed. */
+  --font-ui: 'Cairo', 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
 
   /* Light judicial theme */
   --color-bg: #f4f6f8;

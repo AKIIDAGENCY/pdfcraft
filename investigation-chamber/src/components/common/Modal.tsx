@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react';
+import { CloseIcon } from './icons';
 
 export default function Modal({
   title,
@@ -27,8 +28,8 @@ export default function Modal({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <h2 style={{ fontSize: 16, margin: 0 }}>{title}</h2>
-          <button className="btn btn-sm" onClick={onClose}>
-            ✕
+          <button className="btn btn-sm" onClick={onClose} aria-label="إغلاق">
+            <CloseIcon />
           </button>
         </div>
         {children}

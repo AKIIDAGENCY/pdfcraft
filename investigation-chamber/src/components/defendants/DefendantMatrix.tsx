@@ -8,6 +8,7 @@ import AlertBadge from '../common/AlertBadge';
 import { roleLabel } from '../../lib/format';
 import ErrorState from '../common/ErrorState';
 import NewDefendantModal from './NewDefendantModal';
+import { LockIcon } from '../common/icons';
 import type { Case, CustodyStatus, DefendantRole, DetentionAlertLevel } from '../../../shared/types';
 
 interface MatrixRow {
@@ -300,7 +301,7 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
                     <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggleOne(d.id)} />
                   </td>
                   <td style={{ width: 190, fontWeight: 600 }}>
-                    {d.aliasHidden ? '🔒 ' : ''}
+                    {d.aliasHidden ? <LockIcon /> : null}{' '}
                     {d.fullName}
                   </td>
                   <td style={{ width: 90 }} className="text-muted">

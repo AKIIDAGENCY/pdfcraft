@@ -8,6 +8,7 @@ import NewInterceptionModal from './NewInterceptionModal';
 import NewInfiltrationModal from './NewInfiltrationModal';
 import NewSeizureModal from './NewSeizureModal';
 import NewProtectedWitnessModal from './NewProtectedWitnessModal';
+import { FlagIcon, LockIcon } from '../common/icons';
 import type { Case, InfiltrationRecord, InterceptionRecord, Judge, ProtectedWitness, SeizureRecord } from '../../../shared/types';
 
 export default function CaseOverviewTab({ caseId }: { caseId: string }) {
@@ -59,9 +60,17 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
           ))}
         </div>
         {(theCase.isTransnational || theCase.requiresForensicOrCrossBorder) && (
-          <p style={{ marginTop: 10, fontSize: 12.5 }} className="text-muted">
-            {theCase.isTransnational && '⚑ جريمة عبر وطنية (المواد 343، 345) '}
-            {theCase.requiresForensicOrCrossBorder && '⚑ تستلزم خبرة جنائية أو إنابات قضائية دولية (م. 205)'}
+          <p style={{ marginTop: 10, fontSize: 12.5, display: 'flex', flexWrap: 'wrap', gap: 14 }} className="text-muted">
+            {theCase.isTransnational && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <FlagIcon /> جريمة عبر وطنية (المواد 343، 345)
+              </span>
+            )}
+            {theCase.requiresForensicOrCrossBorder && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <FlagIcon /> تستلزم خبرة جنائية أو إنابات قضائية دولية (م. 205)
+              </span>
+            )}
           </p>
         )}
         {theCase.notes && (
@@ -165,7 +174,7 @@ export default function CaseOverviewTab({ caseId }: { caseId: string }) {
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {witnesses!.map((w) => (
                 <li key={w.id} style={{ fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  🔒 {w.pseudonym}
+                  <LockIcon /> {w.pseudonym}
                   <span className="text-muted">— ملف سري مستقل</span>
                   <button type="button" className="btn" style={{ fontSize: 11, padding: '2px 8px', marginInlineStart: 'auto' }} onClick={() => setRevealTarget(w)}>
                     الاطلاع على الهوية

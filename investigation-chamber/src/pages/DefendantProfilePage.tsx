@@ -6,6 +6,7 @@ import CustodyBadge from '../components/common/CustodyBadge';
 import AlertBadge from '../components/common/AlertBadge';
 import { detentionEventLabel, formatDate, roleLabel } from '../lib/format';
 import ErrorState from '../components/common/ErrorState';
+import { LockIcon, WarningIcon } from '../components/common/icons';
 import { JUDICIAL_CONTROL_MEASURES } from '../../shared/legal/articles';
 import { selectGoverningCharge } from '../../shared/engine/chargeUtils';
 import type { Case, Charge, Defendant, DetentionEvent, InterrogationRecord, Judge, JudicialControlMeasureRecord, Lawyer } from '../../shared/types';
@@ -205,8 +206,8 @@ export default function DefendantProfilePage() {
 
       <div className="card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 19, margin: '0 0 6px' }}>
-            {defendant.aliasHidden ? '🔒 ' : ''}
+          <h1 style={{ fontSize: 19, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {defendant.aliasHidden ? <LockIcon size={16} /> : null}
             {defendant.fullName}
           </h1>
           <p className="text-muted" style={{ margin: 0, fontSize: 12.5 }}>
@@ -224,9 +225,9 @@ export default function DefendantProfilePage() {
       {actionError && (
         <div
           className="card"
-          style={{ padding: '10px 14px', fontSize: 12.5, background: 'var(--color-alert-red-bg)', color: 'var(--color-alert-red-fg)' }}
+          style={{ padding: '10px 14px', fontSize: 12.5, background: 'var(--color-alert-red-bg)', color: 'var(--color-alert-red-fg)', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          ⚠ {actionError}
+          <WarningIcon /> {actionError}
         </div>
       )}
 
@@ -258,7 +259,9 @@ export default function DefendantProfilePage() {
               }}
             >
               {detentionStatus.status.violations.map((v: string, i: number) => (
-                <div key={i}>⚠ {v}</div>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <WarningIcon /> {v}
+                </div>
               ))}
             </div>
           )}

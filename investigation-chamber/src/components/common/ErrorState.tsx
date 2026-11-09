@@ -1,3 +1,5 @@
+import { WarningIcon } from './icons';
+
 /**
  * A data-load failure must never be silently swallowed into an infinite
  * "loading…" spinner — that's indistinguishable from "still working" to a
@@ -17,7 +19,9 @@ export default function ErrorState({ error, onRetry }: { error: Error; onRetry?:
         gap: 8,
       }}
     >
-      <strong>⚠ حدث خطأ أثناء تحميل البيانات</strong>
+      <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <WarningIcon /> حدث خطأ أثناء تحميل البيانات
+      </strong>
       <span style={{ fontSize: 12.5, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace' }}>
         {error.message}
       </span>

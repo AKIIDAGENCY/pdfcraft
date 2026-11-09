@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
+import { DashboardIcon, FolderIcon } from '../common/icons';
 
 const links = [
-  { to: '/', label: 'لوحة القيادة', icon: '📊', end: true },
-  { to: '/cases', label: 'ملفات القضايا', icon: '📁', end: false },
+  { to: '/', label: 'لوحة القيادة', Icon: DashboardIcon, end: true },
+  { to: '/cases', label: 'ملفات القضايا', Icon: FolderIcon, end: false },
 ];
 
 export default function Sidebar() {
@@ -43,7 +44,7 @@ export default function Sidebar() {
             background: isActive ? 'var(--color-accent)' : 'transparent',
           })}
         >
-          <span aria-hidden>{link.icon}</span>
+          <link.Icon />
           {link.label}
         </NavLink>
       ))}
