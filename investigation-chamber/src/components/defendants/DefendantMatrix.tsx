@@ -40,10 +40,6 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
     reload();
     reloadCase();
   }
-  // Chamber-of-Accusation extensions are reserved (Art. 205) for
-  // transnational/terrorism files requiring forensic examination or
-  // cross-border inquiries — must be derived from the case, never assumed.
-  const chamberExtensionEligible = Boolean(theCase?.isTransnational && theCase?.requiresForensicOrCrossBorder);
   const [search, setSearch] = useState('');
   const [custodyFilter, setCustodyFilter] = useState<'all' | CustodyStatus>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | DefendantRole>('all');
@@ -134,11 +130,7 @@ export default function DefendantMatrix({ caseId }: { caseId: string }) {
     try {
       const results = await Promise.all(
         targets.map(async (r) => {
-          const { eligibility } = await api.detention.status(
-            r.defendant.id,
-            r.severityTier ?? 'ordinary',
-            chamberExtensionEligible,
-          );
+          const { eligibility } = await api.detention.status(r.defendant.id, r.severityTier ?? 'ordinary');
           if (!eligibility.eligible || eligibility.nextEventType !== 'chamber_extension') return false;
           await api.detention.create({
             defendantId: r.defendant.id,

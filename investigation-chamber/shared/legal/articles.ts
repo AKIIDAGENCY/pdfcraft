@@ -1,6 +1,12 @@
 /**
  * Statutory reference constants — Algerian Code of Criminal Procedure,
- * Law No. 25-14 (القطب الجزائي الوطني لمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية).
+ * Law No. 25-14 of 9 Safar 1447 (3 August 2025), "يتضمن قانون الإجراءات
+ * الجزائية" (Official Gazette No. 54).
+ *
+ * Every figure below is transcribed directly from that text (not from the
+ * earlier Ordinance 66-155, and not from assumption) — see the
+ * "Notes on scope and judgment calls" section of the README for what still
+ * needs a qualified lawyer's confirmation before real use.
  *
  * Centralizing the raw figures here means the engine and the UI both cite
  * the same numbers, and a legal-text amendment only has to change one file.
@@ -15,16 +21,28 @@ export const DETENTION = {
   /** Length of each renewal/extension increment, in months. */
   INCREMENT_MONTHS: 4,
   /**
-   * Max renewals the investigating judge alone may order (Art. 204),
+   * Max renewals the investigating judge alone may order (Art. 204 para 2),
    * reserved for felonies punishable by 20+ years, life imprisonment, or death.
    */
   MAX_JUDGE_RENEWALS_AGGRAVATED: 3,
-  /** Max renewals the investigating judge may order for other felonies. */
-  MAX_JUDGE_RENEWALS_ORDINARY: 1,
   /**
-   * Max further extensions grantable by the Chamber of Accusation
-   * (غرفة الاتهام) for transnational-crime / terrorism files that require
-   * forensic examination or cross-border letters rogatory (Arts. 204, 205).
+   * Max renewals the investigating judge may order for other felonies
+   * (Art. 204 para 1: "يجوز لقاضي التحقيق... أن يصدر أمرا مسببا بتمديد
+   * الحبس المؤقت للمتهم مرتين (2)").
+   */
+  MAX_JUDGE_RENEWALS_ORDINARY: 2,
+  /**
+   * Max further extensions grantable by the Chamber of Accusation (غرفة
+   * الاتهام), 4 months each: "يجوز لغرفة الاتهام تمديد الحبس المؤقت لمدة
+   * أربعة (4) أشهر قابلة للتجديد أربع (4) مرات". Art. 204 grants this to
+   * ANY felony-matter case once judge-level renewals are exhausted and the
+   * max period is about to lapse — it is not limited to transnational or
+   * terrorism files. Art. 205 is a separate, additional avenue for a listed
+   * set of complex-crime categories (drugs, cross-border organized crime,
+   * ICT crimes, money laundering, terrorism, state security, corruption,
+   * smuggling, human/organ trafficking, kidnapping) specifically when
+   * expert examination or extraterritorial evidence-gathering is needed —
+   * it does not narrow Art. 204's own general grant.
    */
   MAX_CHAMBER_EXTENSIONS: 4,
   articles: ['204', '205', '294'] as const,
@@ -41,7 +59,15 @@ export const DETENTION_ALERT_THRESHOLDS_DAYS = {
 /** Art. 268 — appeal window for the defendant / civil party, in days. */
 export const APPEAL_WINDOW_DAYS = 3;
 
-/** Arts. 143, 258 — prosecution file-review window, in days. */
+/**
+ * Art. 258 — once the investigating judge considers the investigation
+ * closed and sends the file to the prosecutor, the prosecutor must submit
+ * final requests within this many days ("وعلى وكيل الجمهورية تقديم طلباته
+ * إليه خلال عشرة (10) أيام، على الأكثر"). Art. 143 is a different,
+ * unrelated provision (a 5-day judge-response window for an investigative
+ * act the prosecutor requests mid-investigation) and was wrongly cited
+ * alongside this figure before.
+ */
 export const PROSECUTION_REVIEW_WINDOW_DAYS = 10;
 
 /** Arts. 114, 116 — wiretap/interception authorization, in months. */

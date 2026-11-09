@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS interrogations (
   defendant_id TEXT NOT NULL REFERENCES defendants(id) ON DELETE CASCADE,
   case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   date TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('initial', 'summary', 'confrontation')),
+  type TEXT NOT NULL CHECK (type IN ('first_appearance', 'summary', 'confrontation')),
   judge_id TEXT NOT NULL,
   summary TEXT NOT NULL
 );

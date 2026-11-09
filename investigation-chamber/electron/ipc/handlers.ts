@@ -43,15 +43,12 @@ export function registerIpcHandlers(): void {
     repo.listDetentionEventsByDefendant(defendantId),
   );
   ipcMain.handle('detention:create', (_e, input) => repo.createDetentionEvent(input));
-  ipcMain.handle(
-    'detention:status',
-    (_e, defendantId: string, severityTier: CrimeSeverityTier, chamberExtensionEligible: boolean) => {
-      const events = repo.listDetentionEventsByDefendant(defendantId);
-      const status = computeDetentionStatus(events, severityTier, { chamberExtensionEligible });
-      const eligibility = evaluateRenewalEligibility(status);
-      return { status, eligibility };
-    },
-  );
+  ipcMain.handle('detention:status', (_e, defendantId: string, severityTier: CrimeSeverityTier) => {
+    const events = repo.listDetentionEventsByDefendant(defendantId);
+    const status = computeDetentionStatus(events, severityTier);
+    const eligibility = evaluateRenewalEligibility(status);
+    return { status, eligibility };
+  });
 
   // Judicial control --------------------------------------------------------
   ipcMain.handle('judicialControl:listByDefendant', (_e, defendantId: string) =>

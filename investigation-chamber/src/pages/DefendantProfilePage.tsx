@@ -49,15 +49,9 @@ export default function DefendantProfilePage() {
   );
 
   const severityTier = selectGoverningCharge(charges ?? [])?.severityTier ?? 'ordinary';
-  // Chamber-of-Accusation extensions are reserved (Art. 205) for
-  // transnational/terrorism files requiring forensic examination or
-  // cross-border inquiries — derive this from the case itself rather than
-  // assuming every case qualifies, which would wrongly authorize continued
-  // detention beyond the lawful ceiling for an ordinary case.
-  const chamberExtensionEligible = Boolean(theCase?.isTransnational && theCase?.requiresForensicOrCrossBorder);
   const { data: detentionStatus, error: statusError, reload: reloadStatus } = useAsync(
-    () => (defendantId ? api.detention.status(defendantId, severityTier, chamberExtensionEligible) : Promise.resolve(null)),
-    [defendantId, severityTier, chamberExtensionEligible, defendant?.custodyStatus],
+    () => (defendantId ? api.detention.status(defendantId, severityTier) : Promise.resolve(null)),
+    [defendantId, severityTier, defendant?.custodyStatus],
   );
 
   function reloadAll() {
@@ -87,7 +81,7 @@ export default function DefendantProfilePage() {
 
   const [showInterrogationForm, setShowInterrogationForm] = useState(false);
   const [interrogationDate, setInterrogationDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [interrogationType, setInterrogationType] = useState<'initial' | 'summary' | 'confrontation'>('initial');
+  const [interrogationType, setInterrogationType] = useState<'first_appearance' | 'summary' | 'confrontation'>('first_appearance');
   const [interrogationJudge, setInterrogationJudge] = useState('');
   const [interrogationSummary, setInterrogationSummary] = useState('');
   const [interrogationBusy, setInterrogationBusy] = useState(false);
@@ -368,7 +362,7 @@ export default function DefendantProfilePage() {
 
       <div className="card" style={{ padding: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h2 style={{ fontSize: 15, margin: 0 }}>سجل الاستجوابات (بما فيها الاستجواب الإجمالي — م. 183)</h2>
+          <h2 style={{ fontSize: 15, margin: 0 }}>سجل المثول والاستجوابات (بما فيها الاستجواب الإجمالي — م. 183)</h2>
           <button className="btn btn-sm" onClick={() => setShowInterrogationForm((v) => !v)}>
             {showInterrogationForm ? 'إلغاء' : '+ تسجيل استجواب'}
           </button>
@@ -386,7 +380,7 @@ export default function DefendantProfilePage() {
             <label style={{ fontSize: 12 }}>
               النوع
               <select value={interrogationType} onChange={(e) => setInterrogationType(e.target.value as any)} style={{ display: 'block' }}>
-                <option value="initial">استجواب أولي</option>
+                <option value="first_appearance">المثول الأول (م. 175)</option>
                 <option value="summary">استجواب إجمالي (م. 183)</option>
                 <option value="confrontation">مواجهة</option>
               </select>
@@ -417,7 +411,7 @@ export default function DefendantProfilePage() {
             {(interrogations ?? []).map((i) => (
               <tr key={i.id}>
                 <td>{formatDate(i.date)}</td>
-                <td>{i.type === 'summary' ? 'استجواب إجمالي' : i.type === 'initial' ? 'استجواب أولي' : 'مواجهة'}</td>
+                <td>{i.type === 'summary' ? 'استجواب إجمالي' : i.type === 'first_appearance' ? 'المثول الأول' : 'مواجهة'}</td>
                 <td className="text-muted">{i.summary}</td>
               </tr>
             ))}

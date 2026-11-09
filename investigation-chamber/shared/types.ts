@@ -170,7 +170,16 @@ export interface InterrogationRecord {
   defendantId: string;
   caseId: string;
   date: string;
-  type: 'initial' | 'summary' | 'confrontation'; // استجواب أولي / إجمالي (Art. 183) / مواجهة
+  /**
+   * Art. 175's "first appearance" (المثول الأول) is not a kind of
+   * "استجواب" at all under the actual text — the judge verifies identity
+   * and notifies the accused of the charge and their rights, and takes no
+   * statement unless the accused volunteers one. 'summary' (استجواب
+   * إجمالي, Art. 183, mandatory before closing a felony investigation) and
+   * 'confrontation' (مواجهة, Arts. 181-182) are the two real interrogation
+   * types alongside ordinary interrogation sessions.
+   */
+  type: 'first_appearance' | 'summary' | 'confrontation';
   judgeId: string;
   summary: string;
 }

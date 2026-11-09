@@ -29,7 +29,7 @@ describe('generateMockCase', () => {
       const events = bundle.detentionEvents.filter((e) => e.defendantId === defendant.id);
       expect(events.length).toBeGreaterThan(0);
       const charge = chargesByDefendant.get(defendant.id)!;
-      const status = computeDetentionStatus(events, charge.severityTier, { chamberExtensionEligible: true });
+      const status = computeDetentionStatus(events, charge.severityTier);
       expect(status.violations).toHaveLength(0);
     }
   });
@@ -45,8 +45,7 @@ describe('generateMockCase', () => {
         .map((d) => {
           const events = bundle.detentionEvents.filter((e) => e.defendantId === d.id);
           const charge = chargesByDefendant.get(d.id)!;
-          return computeDetentionStatus(events, charge.severityTier, { chamberExtensionEligible: true }, now)
-            .alertLevel;
+          return computeDetentionStatus(events, charge.severityTier, now).alertLevel;
         }),
     );
 

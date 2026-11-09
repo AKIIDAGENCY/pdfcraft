@@ -38,8 +38,8 @@ const api = {
   detention: {
     listByDefendant: (defendantId: string) => ipcRenderer.invoke('detention:listByDefendant', defendantId),
     create: (input: unknown) => ipcRenderer.invoke('detention:create', input),
-    status: (defendantId: string, severityTier: string, chamberExtensionEligible: boolean) =>
-      ipcRenderer.invoke('detention:status', defendantId, severityTier, chamberExtensionEligible),
+    status: (defendantId: string, severityTier: string) =>
+      ipcRenderer.invoke('detention:status', defendantId, severityTier),
   },
   judicialControl: {
     listByDefendant: (defendantId: string) => ipcRenderer.invoke('judicialControl:listByDefendant', defendantId),

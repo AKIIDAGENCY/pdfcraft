@@ -291,9 +291,9 @@ export function generateMockCase(seed = 25141, now: Date = new Date()): MockCase
       defendantId: defendant.id,
       caseId: theCase.id,
       date: isoDate(addMonths(registrationDate, 1)),
-      type: 'initial',
+      type: 'first_appearance',
       judgeId: primaryJudge.id,
-      summary: 'استجواب أولي حول الوقائع المنسوبة والتحقق من الهوية والوضعية العائلية والمهنية.',
+      summary: 'المثول الأول: التحقق من الهوية والإحاطة بالوقائع المنسوبة والتهمة والمواد القانونية المطبقة، والتنبيه إلى الحق في عدم الإدلاء بأي تصريح (م. 175).',
     });
     if (i % 7 === 0) {
       interrogations.push({

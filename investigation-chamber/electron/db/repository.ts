@@ -957,9 +957,7 @@ export function computeDashboardStats(): DashboardStats {
       const charges = chargesByDefendant.get(d.id) ?? [];
       const tier = selectGoverningCharge(charges)?.severityTier ?? 'ordinary';
       const events = eventsByDefendant.get(d.id) ?? [];
-      const status = computeDetentionStatus(events, tier, {
-        chamberExtensionEligible: c.isTransnational && c.requiresForensicOrCrossBorder,
-      });
+      const status = computeDetentionStatus(events, tier);
       detentionAlertCounts[status.alertLevel] += 1;
       if (status.alertLevel === 'red' || status.alertLevel === 'overdue') {
         risks.push({
@@ -1003,9 +1001,6 @@ export interface DefendantMatrixRow {
 }
 
 export function getDefendantMatrix(caseId: string): DefendantMatrixRow[] {
-  const theCase = getCase(caseId);
-  const chamberExtensionEligible = Boolean(theCase?.isTransnational && theCase?.requiresForensicOrCrossBorder);
-
   const defendants = listDefendantsByCase(caseId);
   const lawyers = listLawyers();
   const lawyerNameById = new Map(lawyers.map((l) => [l.id, l.fullName]));
@@ -1025,9 +1020,7 @@ export function getDefendantMatrix(caseId: string): DefendantMatrixRow[] {
     let detentionDaysRemaining: number | null = null;
     if (defendant.custodyStatus === 'detained') {
       const events = eventsByDefendant.get(defendant.id) ?? [];
-      const status = computeDetentionStatus(events, primaryCharge?.severityTier ?? 'ordinary', {
-        chamberExtensionEligible,
-      });
+      const status = computeDetentionStatus(events, primaryCharge?.severityTier ?? 'ordinary');
       detentionAlertLevel = status.alertLevel;
       detentionDaysRemaining = status.daysRemaining;
     }

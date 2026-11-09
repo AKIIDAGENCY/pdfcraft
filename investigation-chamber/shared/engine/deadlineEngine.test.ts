@@ -32,12 +32,12 @@ describe('computeAppealDeadline — Art. 268 (3-day window)', () => {
   });
 });
 
-describe('computeProsecutionReviewDeadline — Arts. 143, 258', () => {
+describe('computeProsecutionReviewDeadline — Art. 258', () => {
   it('computes a 10-day review window', () => {
     const received = new Date('2026-01-01T00:00:00Z');
     const deadline = computeProsecutionReviewDeadline(received, new Date('2026-01-01T00:00:00Z'));
     expect(deadline.dueDate.toISOString().slice(0, 10)).toBe('2026-01-11');
-    expect(deadline.articleReferences).toEqual(['143', '258']);
+    expect(deadline.articleReferences).toEqual(['258']);
   });
 });
 

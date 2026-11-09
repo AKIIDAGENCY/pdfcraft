@@ -40,7 +40,7 @@ export function computeAppealDeadline(notificationDate: Date, now: Date = new Da
   };
 }
 
-/** Arts. 143, 258 — prosecution file-review window. */
+/** Art. 258 — prosecution file-review window once the investigation is closed. */
 export function computeProsecutionReviewDeadline(
   fileReceivedDate: Date,
   now: Date = new Date(),
@@ -49,7 +49,7 @@ export function computeProsecutionReviewDeadline(
   const daysRemaining = normalizeZero(Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   return {
     label: 'أجل مراجعة النيابة العامة',
-    articleReferences: ['143', '258'],
+    articleReferences: ['258'],
     dueDate,
     daysRemaining,
     alertLevel: alertFromDays(daysRemaining),

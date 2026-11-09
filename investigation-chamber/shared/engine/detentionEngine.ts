@@ -47,31 +47,24 @@ function maxJudgeRenewals(tier: CrimeSeverityTier): number {
     : DETENTION.MAX_JUDGE_RENEWALS_ORDINARY;
 }
 
-export interface DetentionStatusOptions {
-  /**
-   * Whether the case qualifies the Chamber of Accusation to grant further
-   * extensions at all — reserved by Art. 205 for transnational-crime /
-   * terrorism files that require forensic examination or cross-border
-   * inquiries. Defaults to true, since this system exclusively serves the
-   * specialized pole's own jurisdiction (Arts. 343-348); pass false for a
-   * joined ordinary-felony defendant whose charge does not itself qualify.
-   */
-  chamberExtensionEligible?: boolean;
-}
-
 /**
  * Builds the chronological detention timeline for one defendant from their
  * raw detention events, and computes the legal status (Arts. 204, 205, 294).
  *
- * Rules encoded:
+ * Rules encoded (felony matters — مواد الجنايات; this engine does not model
+ * the separate, much simpler misdemeanor detention cap under Arts. 202/203,
+ * which has no judge-renewal or Chamber-of-Accusation mechanism at all):
  *  - Art. 204: base term is 4 months, ordered by the investigating judge.
- *  - Art. 204: the investigating judge may renew up to 3 times (4 months
- *    each) only for crimes punishable by 20+ years, life imprisonment, or
- *    death ("aggravated" tier); otherwise a single renewal.
- *  - Arts. 204/205: once judge-level renewals are exhausted, the Chamber of
- *    Accusation may grant up to 4 further 4-month extensions, but only for
- *    transnational/terrorism files requiring forensic examination or
- *    cross-border inquiries (`chamberExtensionEligible`).
+ *  - Art. 204 para 2: the investigating judge may renew up to 3 times (4
+ *    months each) for crimes punishable by 20+ years, life imprisonment, or
+ *    death ("aggravated" tier); para 1: up to 2 times otherwise.
+ *  - Art. 204: once judge-level renewals are exhausted, the Chamber of
+ *    Accusation may grant up to 4 further 4-month extensions — this is
+ *    Art. 204's own general grant for any felony-matter case nearing its
+ *    max detention period, not something reserved for transnational or
+ *    terrorism files (Art. 205 is a separate, additional avenue for a
+ *    listed set of complex-crime categories needing expert examination or
+ *    extraterritorial evidence-gathering — it does not narrow Art. 204).
  *  - A gap between segments, or a segment that starts before the previous
  *    one expires, or exceeding either cap, is recorded as a `violation` so
  *    the UI can surface it instead of silently miscalculating a deadline —
@@ -80,10 +73,8 @@ export interface DetentionStatusOptions {
 export function computeDetentionStatus(
   events: DetentionEvent[],
   severityTier: CrimeSeverityTier,
-  options: DetentionStatusOptions = {},
   now: Date = new Date(),
 ): DetentionStatus {
-  const chamberExtensionEligible = options.chamberExtensionEligible ?? true;
   const defendantId = events[0]?.defendantId ?? '';
   const violations: string[] = [];
 
@@ -126,7 +117,7 @@ export function computeDetentionStatus(
   });
 
   const maxJudge = maxJudgeRenewals(severityTier);
-  const maxChamber = chamberExtensionEligible ? DETENTION.MAX_CHAMBER_EXTENSIONS : 0;
+  const maxChamber = DETENTION.MAX_CHAMBER_EXTENSIONS;
 
   if (judgeRenewalsUsed > maxJudge) {
     violations.push(
