@@ -58,7 +58,8 @@ export const TEMPLATE_TITLES: Record<DocumentTemplateCode, string> = {
 };
 
 export interface OrderContext {
-  theCase: Pick<Case, 'caseNumber' | 'title' | 'legalQualifications'>;
+  theCase: Pick<Case, 'caseNumber' | 'title' | 'legalQualifications' | 'courtName'> &
+    Partial<Pick<Case, 'isTransnational' | 'requiresForensicOrCrossBorder'>>;
   defendant?: Pick<Defendant, 'fullName' | 'nationalId' | 'nationality' | 'dateOfBirth' | 'role'>;
   /**
    * The defendant's own governing charge (Art. 204's aggravated bracket
@@ -75,12 +76,19 @@ export interface OrderContext {
 /** Art. 268 — appeal window for the defendant/civil party, in days. */
 const APPEAL_NOTICE = `يحق للمتهم أو محاميه الطعن في هذا الأمر خلال أجل ${APPEAL_WINDOW_DAYS} أيام من تاريخ تبليغه أو العلم به، طبقا للمادة 268 من قانون الإجراءات الجزائية.`;
 
-function letterheadHtml(): string {
+/**
+ * The app is not specific to any one chamber or pole (Arts. 343-348 define
+ * the national specialized pole as one particular institution among many
+ * investigating-judge offices, not the only one) — the letterhead uses the
+ * case's own courtName instead of a fixed institution name, falling back to
+ * a generic placeholder when the user hasn't entered one.
+ */
+function letterheadHtml(courtName?: string): string {
   return `
     <div class="letterhead">
       <div>الجمهورية الجزائرية الديمقراطية الشعبية</div>
       <div>وزارة العدل</div>
-      <div>القطب الجزائي الوطني المتخصص بمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية</div>
+      <div>${escapeHtml(courtName || 'المحكمة / المجلس القضائي المختص')}</div>
       <div>غرفة التحقيق</div>
     </div>`;
 }
@@ -96,7 +104,7 @@ function bodyForTemplate(code: DocumentTemplateCode, ctx: OrderContext): string 
   switch (code) {
     case 'DETENTION_ORDER':
       return `
-        <p>نحن، ${escapeHtml(ctx.judgeName)}، قاضي التحقيق لدى غرفة التحقيق بالقطب الجزائي الوطني المتخصص،</p>
+        <p>نحن، ${escapeHtml(ctx.judgeName)}، قاضي التحقيق لدى غرفة التحقيق ${ctx.theCase.courtName ? `بـ${escapeHtml(ctx.theCase.courtName)}` : 'المختصة'}،</p>
         <p>بناء على أحكام المواد 204 وما يليها من قانون الإجراءات الجزائية (القانون رقم 25-14)،</p>
         <p>وبعد الاطلاع على أوراق ملف القضية رقم ${escapeHtml(ctx.theCase.caseNumber)}،</p>
         ${nameBlock}
@@ -122,15 +130,20 @@ function bodyForTemplate(code: DocumentTemplateCode, ctx: OrderContext): string 
     case 'CASE_REFERRAL_ORDER':
       return `
         <p>بعد استيفاء إجراءات التحقيق في القضية رقم ${escapeHtml(ctx.theCase.caseNumber)}،</p>
-        <p>نأمر بالتخلي عن الملف وإحالته على النيابة العامة لدى القطب الجزائي المتخصص لاتخاذ ما يراه مناسبا.</p>`;
-    case 'CHAMBER_EXTENSION_REQUEST':
+        <p>نأمر بالتخلي عن الملف وإحالته على النيابة العامة المختصة لاتخاذ ما يراه مناسبا.</p>`;
+    case 'CHAMBER_EXTENSION_REQUEST': {
+      const additionalGround = ctx.theCase.isTransnational || ctx.theCase.requiresForensicOrCrossBorder
+        ? `<p>ونظرا لما تستلزمه القضية من إنابات قضائية دولية و/أو خبرة جنائية متخصصة طبقا للمادة 205،</p>`
+        : '';
       return `
-        <p>إلى السيد رئيس غرفة الاتهام لدى مجلس قضاء الجزائر،</p>
+        <p>إلى السيد رئيس غرفة الاتهام لدى ${escapeHtml(ctx.theCase.courtName || 'المجلس القضائي المختص')}،</p>
         <p>نظرا لاستنفاد آجال التمديد المخولة لقاضي التحقيق طبقا للمادة 204،</p>
-        <p>ونظرا للطابع العابر للحدود الوطنية للجريمة موضوع الملف رقم ${escapeHtml(ctx.theCase.caseNumber)} واستلزامه إنابات قضائية دولية وخبرة جنائية،</p>
+        ${additionalGround}
+        <p>في القضية رقم ${escapeHtml(ctx.theCase.caseNumber)}،</p>
         ${nameBlock}
-        <p>نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 205.</p>
+        <p>نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 204.</p>
         ${appealNotice}`;
+    }
     case 'SUMMONS':
       return `
         <p>ندعو المدعو(ة) أدناه للحضور شخصيا أمام قاضي التحقيق بغرفة التحقيق.</p>
@@ -167,7 +180,7 @@ export function renderOrderHtml(code: DocumentTemplateCode, ctx: OrderContext): 
 </style>
 </head>
 <body>
-  ${letterheadHtml()}
+  ${letterheadHtml(ctx.theCase.courtName)}
   <h1>${title}</h1>
   <div class="meta">
     <span>رقم الملف: ${escapeHtml(ctx.theCase.caseNumber)}</span>

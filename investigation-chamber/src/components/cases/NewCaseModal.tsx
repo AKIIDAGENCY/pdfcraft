@@ -8,6 +8,7 @@ const labelStyle: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, displ
 export default function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: (caseId: string) => void }) {
   const [caseNumber, setCaseNumber] = useState('');
   const [title, setTitle] = useState('');
+  const [courtName, setCourtName] = useState('');
   const [registrationDate, setRegistrationDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [qualifications, setQualifications] = useState('');
   const [judgeName, setJudgeName] = useState('');
@@ -35,6 +36,7 @@ export default function NewCaseModal({ onClose, onCreated }: { onClose: () => vo
           .split('\n')
           .map((l) => l.trim())
           .filter(Boolean),
+        courtName: courtName.trim() || undefined,
         isTransnational,
         requiresForensicOrCrossBorder: requiresForensic,
         primaryInvestigatingJudgeId: judge.id,
@@ -60,6 +62,10 @@ export default function NewCaseModal({ onClose, onCreated }: { onClose: () => vo
         <label style={labelStyle}>
           عنوان القضية *
           <input type="text" style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <label style={labelStyle}>
+          الجهة القضائية (المجلس القضائي / المحكمة)
+          <input type="text" style={inputStyle} value={courtName} onChange={(e) => setCourtName(e.target.value)} placeholder="مثال: مجلس قضاء وهران" />
         </label>
         <label style={labelStyle}>
           تاريخ التسجيل

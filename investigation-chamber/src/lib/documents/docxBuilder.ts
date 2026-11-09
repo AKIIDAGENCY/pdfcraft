@@ -47,7 +47,7 @@ function bodyParagraphs(code: DocumentTemplateCode, ctx: OrderContext): Paragrap
   switch (code) {
     case 'DETENTION_ORDER':
       lines.push(
-        `نحن، ${ctx.judgeName}، قاضي التحقيق لدى غرفة التحقيق بالقطب الجزائي الوطني المتخصص،`,
+        `نحن، ${ctx.judgeName}، قاضي التحقيق لدى غرفة التحقيق ${ctx.theCase.courtName ? `بـ${ctx.theCase.courtName}` : 'المختصة'}،`,
         'بناء على أحكام المواد 204 وما يليها من قانون الإجراءات الجزائية (القانون رقم 25-14)،',
         `وبعد الاطلاع على أوراق ملف القضية رقم ${ctx.theCase.caseNumber}،`,
         name,
@@ -78,17 +78,20 @@ function bodyParagraphs(code: DocumentTemplateCode, ctx: OrderContext): Paragrap
     case 'CASE_REFERRAL_ORDER':
       lines.push(
         `بعد استيفاء إجراءات التحقيق في القضية رقم ${ctx.theCase.caseNumber}،`,
-        'نأمر بالتخلي عن الملف وإحالته على النيابة العامة لدى القطب الجزائي المتخصص لاتخاذ ما يراه مناسبا.',
+        'نأمر بالتخلي عن الملف وإحالته على النيابة العامة المختصة لاتخاذ ما يراه مناسبا.',
       );
       break;
     case 'CHAMBER_EXTENSION_REQUEST':
       lines.push(
-        'إلى السيد رئيس غرفة الاتهام لدى مجلس قضاء الجزائر،',
+        `إلى السيد رئيس غرفة الاتهام لدى ${ctx.theCase.courtName || 'المجلس القضائي المختص'}،`,
         'نظرا لاستنفاد آجال التمديد المخولة لقاضي التحقيق طبقا للمادة 204،',
-        `ونظرا للطابع العابر للحدود الوطنية للجريمة موضوع الملف رقم ${ctx.theCase.caseNumber}،`,
+        ...(ctx.theCase.isTransnational || ctx.theCase.requiresForensicOrCrossBorder
+          ? ['ونظرا لما تستلزمه القضية من إنابات قضائية دولية و/أو خبرة جنائية متخصصة طبقا للمادة 205،']
+          : []),
+        `في القضية رقم ${ctx.theCase.caseNumber}،`,
         name,
         charge,
-        'نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 205.',
+        'نلتمس من غرفة الاتهام الموقرة الموافقة على تمديد الحبس المؤقت لمدة أربعة (4) أشهر إضافية طبقا للمادة 204.',
       );
       break;
     case 'SUMMONS':
@@ -115,7 +118,7 @@ export async function buildOrderDocx(code: DocumentTemplateCode, ctx: OrderConte
         children: [
           para('الجمهورية الجزائرية الديمقراطية الشعبية', { bold: true, size: 26 }),
           para('وزارة العدل', { bold: true }),
-          para('القطب الجزائي الوطني المتخصص بمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية', { bold: true }),
+          para(ctx.theCase.courtName || 'المحكمة / المجلس القضائي المختص', { bold: true }),
           para('غرفة التحقيق', { bold: true }),
           new Paragraph({ text: '', spacing: { after: 200 } }),
           para(title, { bold: true, underline: true, size: 30 }),

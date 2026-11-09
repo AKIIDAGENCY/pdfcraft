@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS cases (
   registration_date TEXT NOT NULL,
   title TEXT NOT NULL,
   legal_qualifications TEXT NOT NULL DEFAULT '[]', -- JSON array
+  court_name TEXT, -- المجلس القضائي/المحكمة المختصة — used in document letterheads instead of a hardcoded institution
   is_transnational INTEGER NOT NULL DEFAULT 0,
   requires_forensic_or_cross_border INTEGER NOT NULL DEFAULT 0,
   primary_investigating_judge_id TEXT REFERENCES judges(id),

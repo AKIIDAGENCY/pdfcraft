@@ -108,6 +108,7 @@ export function generateMockCase(seed = 25141, now: Date = new Date()): MockCase
     caseNumber: '2025/إره‌-عبر وطني/147',
     registrationDate: isoDate(registrationDate),
     title: 'قضية تمويل الإرهاب و الجريمة المنظمة عبر الوطنية — شبكة "الأطلس"',
+    courtName: 'القطب الجزائي الوطني المتخصص بمكافحة الإرهاب والجريمة المنظمة عبر الوطنية (مجلس قضاء الجزائر)',
     legalQualifications: [
       'تمويل الإرهاب',
       'الانتماء إلى جماعة إرهابية عبر الحدود',

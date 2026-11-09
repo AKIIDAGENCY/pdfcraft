@@ -1,6 +1,6 @@
-appId: dz.gov.pole-penal-specialise.investigation-chamber
+appId: dz.gov.justice.investigation-chamber
 productName: نظام إدارة غرفة التحقيق
-copyright: القطب الجزائي الوطني لمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية
+copyright: وزارة العدل — الجمهورية الجزائرية الديمقراطية الشعبية
 # No auto-update feature in this app, so skip generating update-manifest metadata.
 publish: null
 

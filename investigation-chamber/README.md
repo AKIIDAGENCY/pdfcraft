@@ -1,10 +1,15 @@
 # نظام إدارة غرفة التحقيق — Investigation Chamber Management System
 
-Standalone Windows desktop application for the Investigation Chamber (غرفة
-التحقيق) of the National Specialized Criminal Pole for Countering Terrorism
-and Transnational Organized Crime (القطب الجزائي الوطني لمكافحة الإرهاب
-و الجريمة المنظمة عبر الوطنية), built strictly against Algeria's Code of
-Criminal Procedure, Law No. 25-14.
+Standalone Windows desktop application for an Investigation Chamber (غرفة
+التحقيق) — the office of an investigating judge, at any ordinary court or
+at one of the specialized poles (e.g. the National Specialized Criminal
+Pole for Countering Terrorism and Transnational Organized Crime, القطب
+الجزائي الوطني لمكافحة الإرهاب و الجريمة المنظمة عبر الوطنية, Arts.
+343-348). The app is not tied to any one institution: each case records
+its own `courtName`, used on every generated document's letterhead, so it
+reads correctly for whichever investigating judge's office is using it.
+Built strictly against Algeria's Code of Criminal Procedure, Law No.
+25-14 (Official Gazette No. 54, 9 Safar 1447 / 3 August 2025).
 
 ## Stack
 
@@ -31,7 +36,7 @@ shared/                  Pure, framework-free domain logic (usable by main proce
   legal/articles.ts        Every statutory figure (terms, caps, windows) in one place
   engine/
     detentionEngine.ts      Art. 204/205 detention timeline + alert computation
-    deadlineEngine.ts       Art. 268 appeal window, Arts. 143/258 review window, Arts. 114/116 interception expiry
+    deadlineEngine.ts       Art. 268 appeal window, Art. 258 review window, Arts. 114/116 interception expiry
   data/mockCaseGenerator.ts Deterministic 60-defendant demo case
 
 electron/                 Main process (Node, compiled to dist-electron/electron/*.js)
@@ -120,7 +125,7 @@ rendering real seeded data correctly, in RTL, before this was called done.
 |---|---|
 | Jurisdiction, nationwide authority (Arts. 343, 345, 346, 348) | `shared/legal/articles.ts`, case flags `isTransnational` / letters-rogatory-style handling |
 | Multi-judge chambers (Art. 145) | `cases.primary_investigating_judge_id` + `case_ancillary_judges`, shown on Case Overview |
-| Pre-trial detention base term / renewals / Chamber of Accusation extensions (Arts. 204, 205, 294) | `shared/engine/detentionEngine.ts` — 4-month base, up to 3 judge renewals for the 20y/life/death bracket, up to 4 further Chamber-of-Accusation extensions for transnational/terrorism files; full violation detection, not just happy-path math |
+| Pre-trial detention base term / renewals / Chamber of Accusation extensions (Art. 204; Art. 205 for the complex-crime list) | `shared/engine/detentionEngine.ts` — 4-month base, up to 2 judge renewals for an ordinary felony or 3 for the 20y/life/death bracket, up to 4 further Chamber-of-Accusation extensions available to any felony file (Art. 204's own general grant); full violation detection, not just happy-path math |
 | Color-coded countdown, auto-release warning (Arts. 83, 197, 204) | `AlertBadge`, `alertLabel`, red/orange/green/overdue thresholds in `legal/articles.ts` |
 | Judicial control, 10 statutory measures (Art. 198) | `JUDICIAL_CONTROL_MEASURES` (10 entries), `judicial_control` table, `JudicialControlPanel` in the defendant profile |
 | Wiretaps/interceptions, 4-month cap (Arts. 114, 116) | `deadlineEngine.computeInterceptionStatus` |
@@ -132,7 +137,7 @@ rendering real seeded data correctly, in RTL, before this was called done.
 | Summary interrogation for mass files (Art. 183) | `interrogations.type = 'summary'`, seeded for every 7th mock defendant |
 | Renewal notification tracking (Art. 264) | `detention_records.notification_date`, shown on the defendant timeline |
 | Appeal window (Art. 268) | `deadlineEngine.computeAppealDeadline` (3 days) |
-| Prosecution review window (Arts. 143, 258) | `deadlineEngine.computeProsecutionReviewDeadline` (10 days) |
+| Prosecution review window (Art. 258) | `deadlineEngine.computeProsecutionReviewDeadline` (10 days) |
 | Shell entities / legal persons (Art. 100) | `entities` + `defendant_entities`, rendered as square nodes in the network graph |
 
 ## Notes on scope and judgment calls
@@ -153,11 +158,11 @@ Every statutory figure currently hardcoded, for that review:
 |---|---|---|---|
 | `DETENTION.BASE_TERM_MONTHS` / `INCREMENT_MONTHS` | 4 months | 204 | Base term and every renewal/extension increment are the same length |
 | `DETENTION.MAX_JUDGE_RENEWALS_AGGRAVATED` | 3 | 204 | Applies only when a charge carries 20+ years/life/death |
-| `DETENTION.MAX_JUDGE_RENEWALS_ORDINARY` | 1 | 204 | A default for every other felony — the brief gave no explicit figure for this case; see below |
-| `DETENTION.MAX_CHAMBER_EXTENSIONS` | 4 | 204, 205 | Only for cases flagged transnational AND requiring forensic/cross-border work |
+| `DETENTION.MAX_JUDGE_RENEWALS_ORDINARY` | 2 | 204 | For every other felony (the ordinary, non-aggravated bracket) |
+| `DETENTION.MAX_CHAMBER_EXTENSIONS` | 4 | 204 | Art. 204's own general grant, available to any felony case — not limited to the transnational/complex-crime list in Art. 205, which is a separate additional avenue |
 | `DETENTION_ALERT_THRESHOLDS_DAYS` (green/orange/red) | 30 / 7 days | 83, 197, 204 | UI countdown coloring only — not a statutory cutoff, a judgment call about what counts as "urgent" |
 | `APPEAL_WINDOW_DAYS` | 3 days | 268 | Same window applies to the defendant and any civil party |
-| `PROSECUTION_REVIEW_WINDOW_DAYS` | 10 days | 143, 258 | Single figure for both cited articles |
+| `PROSECUTION_REVIEW_WINDOW_DAYS` | 10 days | 258 | — |
 | `INTERCEPTION.MAX_DURATION_MONTHS` | 4 months | 114, 116 | No distinction made between an initial authorization and a renewal |
 
 - **Judicial-control renewal cadence, ordinary-felony renewal count:** the

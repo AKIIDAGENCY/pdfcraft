@@ -51,6 +51,7 @@ interface CaseRow {
   registration_date: string;
   title: string;
   legal_qualifications: string;
+  court_name: string | null;
   is_transnational: number;
   requires_forensic_or_cross_border: number;
   primary_investigating_judge_id: string | null;
@@ -67,6 +68,7 @@ function mapCase(row: CaseRow, ancillaryJudgeIds: string[]): Case {
     registrationDate: row.registration_date,
     title: row.title,
     legalQualifications: toJsonArray(row.legal_qualifications),
+    courtName: row.court_name ?? undefined,
     isTransnational: toBool(row.is_transnational),
     requiresForensicOrCrossBorder: toBool(row.requires_forensic_or_cross_border),
     primaryInvestigatingJudgeId: row.primary_investigating_judge_id ?? '',
@@ -106,9 +108,9 @@ export function createCase(input: Omit<Case, 'id' | 'createdAt' | 'updatedAt'>):
   const now = nowIso();
   const txn = db.transaction(() => {
     db.prepare(
-      `INSERT INTO cases (id, case_number, registration_date, title, legal_qualifications, is_transnational,
+      `INSERT INTO cases (id, case_number, registration_date, title, legal_qualifications, court_name, is_transnational,
          requires_forensic_or_cross_border, primary_investigating_judge_id, status, notes, created_at, updated_at)
-       VALUES (@id, @caseNumber, @registrationDate, @title, @legalQualifications, @isTransnational,
+       VALUES (@id, @caseNumber, @registrationDate, @title, @legalQualifications, @courtName, @isTransnational,
          @requiresForensicOrCrossBorder, @primaryInvestigatingJudgeId, @status, @notes, @createdAt, @updatedAt)`,
     ).run({
       id,
@@ -116,6 +118,7 @@ export function createCase(input: Omit<Case, 'id' | 'createdAt' | 'updatedAt'>):
       registrationDate: input.registrationDate,
       title: input.title,
       legalQualifications: JSON.stringify(input.legalQualifications),
+      courtName: input.courtName ?? null,
       isTransnational: fromBool(input.isTransnational),
       requiresForensicOrCrossBorder: fromBool(input.requiresForensicOrCrossBorder),
       primaryInvestigatingJudgeId: input.primaryInvestigatingJudgeId || null,

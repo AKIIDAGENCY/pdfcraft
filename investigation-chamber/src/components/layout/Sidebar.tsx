@@ -23,7 +23,7 @@ export default function Sidebar() {
       <div style={{ padding: '4px 8px 20px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-accent)' }}>غرفة التحقيق</span>
         <span className="text-muted" style={{ fontSize: 11 }}>
-          القطب الجزائي الوطني المتخصص
+          نظام إدارة ملفات التحقيق القضائي
         </span>
       </div>
       {links.map((link) => (

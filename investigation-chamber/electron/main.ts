@@ -31,7 +31,7 @@ function createMainWindow(): void {
     minHeight: 700,
     show: false,
     autoHideMenuBar: true,
-    title: 'نظام إدارة غرفة التحقيق — القطب الجزائي الوطني',
+    title: 'نظام إدارة غرفة التحقيق',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

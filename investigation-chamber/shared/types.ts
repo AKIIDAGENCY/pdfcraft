@@ -22,6 +22,15 @@ export interface Case {
   registrationDate: string; // ISO date
   title: string;
   legalQualifications: string[]; // الوصف القانوني للتهم
+  /**
+   * The judicial council / court this case's investigating judge sits at
+   * (e.g. "مجلس قضاء وهران", or "مجلس قضاء الجزائر" for a case under one of
+   * the specialized poles — Arts. 335-348). This app is not specific to any
+   * one chamber or pole: every generated document's letterhead uses this
+   * field instead of a hardcoded institution name, so it reads correctly
+   * for whichever investigating judge's office is actually using it.
+   */
+  courtName?: string;
   isTransnational: boolean;
   requiresForensicOrCrossBorder: boolean;
   primaryInvestigatingJudgeId: string;

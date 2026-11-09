@@ -114,7 +114,13 @@ export const SEIZURE_ARTICLES = ['50', '51', '52', '71'] as const;
 /** Arts. 128-138 — witness & informant protection. */
 export const WITNESS_PROTECTION_ARTICLES = ['128', '132', '133', '138'] as const;
 
-/** Arts. 343-348 — jurisdiction of the specialized pole. */
+/**
+ * Arts. 343-348 — jurisdiction of the National Specialized Criminal Pole
+ * for Counter-Terrorism/Transnational Organized Crime, one specific
+ * investigating-judge institution among others (seated only at the Algiers
+ * judicial council), not this app's assumed default. Referenced only where
+ * a case is actually flagged transnational (Case.isTransnational).
+ */
 export const JURISDICTION_ARTICLES = ['343', '345', '346', '348'] as const;
 
 /** Art. 100 — legal-entity / shell-company criminal liability. */

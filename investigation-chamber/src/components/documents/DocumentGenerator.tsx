@@ -85,7 +85,14 @@ export default function DocumentGenerator({ caseId }: { caseId: string }) {
   const html = useMemo(() => {
     if (!theCase) return '';
     return renderOrderHtml(templateCode, {
-      theCase: { caseNumber: theCase.caseNumber, title: theCase.title, legalQualifications: theCase.legalQualifications },
+      theCase: {
+        caseNumber: theCase.caseNumber,
+        title: theCase.title,
+        legalQualifications: theCase.legalQualifications,
+        courtName: theCase.courtName,
+        isTransnational: theCase.isTransnational,
+        requiresForensicOrCrossBorder: theCase.requiresForensicOrCrossBorder,
+      },
       defendant: selectedDefendant,
       defendantCharge,
       judgeName,
@@ -133,7 +140,14 @@ export default function DocumentGenerator({ caseId }: { caseId: string }) {
     setMessage(null);
     try {
       const bytes = await buildOrderDocx(templateCode, {
-        theCase: { caseNumber: theCase.caseNumber, title: theCase.title, legalQualifications: theCase.legalQualifications },
+        theCase: {
+        caseNumber: theCase.caseNumber,
+        title: theCase.title,
+        legalQualifications: theCase.legalQualifications,
+        courtName: theCase.courtName,
+        isTransnational: theCase.isTransnational,
+        requiresForensicOrCrossBorder: theCase.requiresForensicOrCrossBorder,
+      },
         defendant: selectedDefendant,
         defendantCharge,
         judgeName,
