@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="InvestigationRoom.Views.PassphraseDialog"
+        Title="فتح قاعدة بيانات القضايا المشفّرة"
+        Width="440" Height="240"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        FlowDirection="RightToLeft">
+    <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+        <TextBlock Grid.Row="0" FontWeight="Bold" FontSize="15" Text="قاعدة بيانات القضايا مشفّرة (AES-256)" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" Classes="hint"
+                   Text="أدخل كلمة المرور لفتح قاعدة البيانات الحالية، أو كلمة مرور جديدة لإنشاء واحدة لأول مرة. احتفظ بها في مكان آمن — لا يمكن استرجاع البيانات بدونها."
+                   Margin="0,0,0,12"/>
+        <TextBox Grid.Row="2" x:Name="PasswordBox" PasswordChar="•" PlaceholderText="كلمة المرور" Margin="0,0,0,8" KeyDown="OnKeyDown"/>
+        <TextBlock Grid.Row="3" x:Name="ErrorText" Foreground="#D32F2F" TextWrapping="Wrap" IsVisible="False"/>
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left" Spacing="8">
+            <Button x:Name="OkButton" Content="فتح" Classes="primary" Click="OnOkClick"/>
+            <Button Content="إلغاء" Click="OnCancelClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

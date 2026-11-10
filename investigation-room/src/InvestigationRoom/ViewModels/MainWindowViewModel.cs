@@ -48,6 +48,8 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = "جاهز";
 
+    public LegalCaseViewModel Legal { get; } = new();
+
     public MainWindowViewModel()
     {
         _store = new DataStore();

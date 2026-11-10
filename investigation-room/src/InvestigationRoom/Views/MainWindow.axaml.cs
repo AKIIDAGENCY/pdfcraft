@@ -97,4 +97,15 @@ public partial class MainWindow : Window
             vm.MarkDone(row);
         }
     }
+
+    private async void OnUnlockLegalDbClick(object? sender, RoutedEventArgs e)
+    {
+        var legal = ViewModel?.Legal;
+        if (legal == null)
+        {
+            return;
+        }
+
+        await PassphraseDialog.Ask(this, legal.TryUnlock);
+    }
 }

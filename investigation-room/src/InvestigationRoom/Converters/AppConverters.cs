@@ -78,3 +78,42 @@ public class InverseBoolConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is bool b ? !b : value;
 }
+
+public class DetentionAlertToBrushConverter : IValueConverter
+{
+    public static readonly DetentionAlertToBrushConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is InvestigationRoom.Core.Legal.DetentionAlertLevel level
+            ? level switch
+            {
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Green => new SolidColorBrush(Color.Parse("#2E7D32")),
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Orange => new SolidColorBrush(Color.Parse("#E65100")),
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Red => new SolidColorBrush(Color.Parse("#C62828")),
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Expired => new SolidColorBrush(Color.Parse("#B71C1C")),
+                _ => new SolidColorBrush(Color.Parse("#757575")),
+            }
+            : Brushes.Gray;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public class DetentionAlertToBackgroundConverter : IValueConverter
+{
+    public static readonly DetentionAlertToBackgroundConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is InvestigationRoom.Core.Legal.DetentionAlertLevel level
+            ? level switch
+            {
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Orange => new SolidColorBrush(Color.Parse("#1AE65100")),
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Red => new SolidColorBrush(Color.Parse("#1AC62828")),
+                InvestigationRoom.Core.Legal.DetentionAlertLevel.Expired => new SolidColorBrush(Color.Parse("#33B71C1C")),
+                _ => Brushes.Transparent,
+            }
+            : Brushes.Transparent;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

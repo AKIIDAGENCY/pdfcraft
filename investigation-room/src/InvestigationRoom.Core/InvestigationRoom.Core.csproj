@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>InvestigationRoom.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.Data.Sqlite.Core (NOT the full Microsoft.Data.Sqlite) is
+      used deliberately: the full package transitively references
+      SQLitePCLRaw.bundle_e_sqlite3 (plain, unencrypted SQLite), which
+      silently wins over bundle_e_sqlcipher below and makes "PRAGMA key"
+      a no-op — i.e. the database looks encrypted but is not. .Core has
+      no bundled provider, so bundle_e_sqlcipher is the only one loaded.
+    -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.10" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Data\schema.sql" />
+    <EmbeddedResource Include="Data\schema.sql" />
+  </ItemGroup>
+
+</Project>

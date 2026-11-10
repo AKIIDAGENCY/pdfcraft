@@ -189,6 +189,93 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="الحبس المؤقت والرقابة القضائية">
+                <Grid RowDefinitions="*" DataContext="{Binding Legal}">
+
+                    <!-- Locked state -->
+                    <StackPanel IsVisible="{Binding !IsUnlocked}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="420">
+                        <TextBlock Text="🔒" FontSize="40" HorizontalAlignment="Center"/>
+                        <TextBlock Text="قاعدة بيانات القضايا الجزائية مشفّرة (AES-256 عبر SQLCipher)."
+                                   TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" TextAlignment="Center"
+                                   Text="تتبّع الحبس المؤقت، الرقابة القضائية، المتهمين، والتهم وفق محرك الآجال القانونية. أدخل كلمة مرور لفتحها أو إنشائها."/>
+                        <Button Content="فتح / إنشاء قاعدة البيانات" Classes="primary" HorizontalAlignment="Center"
+                                Click="OnUnlockLegalDbClick" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding StatusMessage}" Classes="hint" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- Unlocked state -->
+                    <Grid IsVisible="{Binding IsUnlocked}" RowDefinitions="Auto,Auto,*,Auto" Margin="16">
+
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+                            <ComboBox Grid.Column="0" ItemsSource="{Binding Cases}" SelectedItem="{Binding SelectedCase}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                            <TextBlock Classes="hint">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}رقم: {0} — {1}">
+                                                        <Binding Path="CaseNumber"/>
+                                                        <Binding Path="LegalQualification"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="1" Content="تحميل بيانات تجريبية (60 متهمًا)" Margin="8,0,0,0"
+                                    Command="{Binding SeedMockCaseCommand}"/>
+                        </Grid>
+
+                        <TextBox Grid.Row="1" Text="{Binding SearchText}" PlaceholderText="بحث بالاسم أو رقم الهوية..." Margin="0,0,0,10"/>
+
+                        <ScrollViewer Grid.Row="2">
+                            <ItemsControl ItemsSource="{Binding FilteredRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10" Margin="0,3" CornerRadius="4" BorderBrush="#E0E0E0" BorderThickness="1"
+                                                Background="{Binding Assessment.AlertLevel, Converter={x:Static conv:DetentionAlertToBackgroundConverter.Instance}}">
+                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto">
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Grid.RowSpan="2">
+                                                    <TextBlock Text="{Binding FullName}" FontWeight="Bold"/>
+                                                    <TextBlock Classes="hint">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="{}{0} — {1}">
+                                                                <Binding Path="RoleInCase"/>
+                                                                <Binding Path="CustodyStatus"/>
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding ChargesSummary}" Classes="hint" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding JudicialControlSummary}" Classes="hint" TextWrapping="Wrap"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DetentionLabel}" FontWeight="Bold"
+                                                           Foreground="{Binding Assessment.AlertLevel, Converter={x:Static conv:DetentionAlertToBrushConverter.Instance}}"
+                                                           VerticalAlignment="Center" Margin="10,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding RenewalsSummary}" Classes="hint" Margin="10,0"/>
+
+                                                <Button Grid.Row="0" Grid.Column="2" Content="تمديد (قاضي التحقيق)"
+                                                        Command="{Binding RequestJudgeRenewalCommand}" Margin="4,0"/>
+                                                <Button Grid.Row="0" Grid.Column="3" Content="تمديد (غرفة الاتهام)"
+                                                        Command="{Binding RequestChamberExtensionCommand}" Margin="4,0"/>
+                                                <Button Grid.Row="0" Grid.Column="4" Content="إفراج" Classes="danger-flat"
+                                                        Command="{Binding ReleaseCommand}" Margin="4,0"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Classes="hint" Margin="0,8,0,0"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
     </DockPanel>
