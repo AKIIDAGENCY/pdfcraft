@@ -59,13 +59,13 @@ public sealed class DefendantRepository
 
     public void UpsertCharge(Charge c) => _db.Execute(
         """
-        INSERT INTO charges (id, defendant_id, description, legal_basis, severity_band, qualifies_extended_detention)
-        VALUES ($id, $defendantId, $description, $legalBasis, $severity, $qualifies)
+        INSERT INTO charges (id, defendant_id, description, legal_basis, severity_band, is_aggravated_felony)
+        VALUES ($id, $defendantId, $description, $legalBasis, $severity, $aggravated)
         ON CONFLICT(id) DO UPDATE SET
             description = excluded.description,
             legal_basis = excluded.legal_basis,
             severity_band = excluded.severity_band,
-            qualifies_extended_detention = excluded.qualifies_extended_detention;
+            is_aggravated_felony = excluded.is_aggravated_felony;
         """,
         p =>
         {
@@ -74,7 +74,7 @@ public sealed class DefendantRepository
             p.AddP("$description", c.Description);
             p.AddP("$legalBasis", c.LegalBasis);
             p.AddP("$severity", c.SeverityBand);
-            p.AddP("$qualifies", c.QualifiesExtendedDetention);
+            p.AddP("$aggravated", c.IsAggravatedFelony);
         });
 
     public void DeleteCharge(string chargeId) =>
@@ -231,7 +231,7 @@ public sealed class DefendantRepository
         Description = r.GetStringOrEmpty("description"),
         LegalBasis = r.GetStringOrEmpty("legal_basis"),
         SeverityBand = r.GetStringOrEmpty("severity_band"),
-        QualifiesExtendedDetention = r.GetBool("qualifies_extended_detention"),
+        IsAggravatedFelony = r.GetBool("is_aggravated_felony"),
     };
 
     private static DetentionRecordEntity MapDetentionRecord(SqliteDataReader r) => new()

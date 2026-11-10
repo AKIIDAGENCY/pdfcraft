@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS charges (
     description     TEXT NOT NULL,                 -- نص التهمة
     legal_basis     TEXT NOT NULL DEFAULT '',       -- المادة القانونية المؤسسة للتهمة
     severity_band   TEXT NOT NULL DEFAULT 'جناية',   -- جنحة | جناية | جناية مشددة (>=20 سنة/مؤبد/إعدام)
-    qualifies_extended_detention INTEGER NOT NULL DEFAULT 0 -- يحدده المستخدم بناء على العقوبة المقررة (Art. 204)
+    is_aggravated_felony INTEGER NOT NULL DEFAULT 0 -- يحدده المستخدم: عقوبة 20 سنة فأكثر أو المؤبد أو الإعدام (المادة 204 فقرة 2) — يرفع سقف تمديدات قاضي التحقيق من 2 إلى 3
 );
 
 -- ---------------------------------------------------------------------

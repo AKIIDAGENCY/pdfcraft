@@ -59,7 +59,7 @@ public partial class DefendantRow : ObservableObject
     };
 
     public string RenewalsSummary =>
-        $"قاضي: {Assessment.JudgeRenewalsUsed}/{LegalRules.MaxJudgeRenewals} — غرفة الاتهام: {Assessment.ChamberExtensionsUsed}/{LegalRules.MaxChamberOfAccusationExtensions}";
+        $"قاضي: {Assessment.JudgeRenewalsUsed}/{Assessment.JudgeRenewalsUsed + Assessment.JudgeRenewalsRemaining} — غرفة الاتهام: {Assessment.ChamberExtensionsUsed}/{Assessment.ChamberExtensionsUsed + Assessment.ChamberExtensionsRemaining}";
 
     public void RaiseAllChanged()
     {

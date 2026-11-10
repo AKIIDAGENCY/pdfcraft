@@ -45,10 +45,17 @@ public sealed record DetentionAssessment(
 /// </summary>
 public static class DetentionEngine
 {
+    /// <param name="records">Chronological detention history for this defendant.</param>
+    /// <param name="isAggravatedFelony">
+    /// True if the charge is punishable by 20+ years, life imprisonment,
+    /// or death (Art. 204, para. 2) — raises the judge-renewal cap from 2
+    /// to 3. Any felony, aggravated or not, is entitled to renewals; this
+    /// flag only changes the count, it does not gate renewal access.
+    /// </param>
+    /// <param name="asOf">The moment to assess against (normally DateTimeOffset.Now).</param>
     public static DetentionAssessment Assess(
         IReadOnlyList<DetentionRecord> records,
-        bool qualifiesExtendedDetention,
-        bool transnationalRequiresForensicOrCrossBorder,
+        bool isAggravatedFelony,
         DateTimeOffset asOf)
     {
         if (records.Count == 0)
@@ -68,14 +75,18 @@ public static class DetentionEngine
         var judgeRenewalsUsed = ordered.Count(r => r.Type == DetentionRecordType.JudgeRenewal);
         var chamberExtensionsUsed = ordered.Count(r => r.Type == DetentionRecordType.ChamberOfAccusationExtension);
 
-        var judgeRenewalsRemaining = Math.Max(0, LegalRules.MaxJudgeRenewals - judgeRenewalsUsed);
+        var judgeRenewalsMax = isAggravatedFelony
+            ? LegalRules.MaxJudgeRenewalsAggravated
+            : LegalRules.MaxJudgeRenewalsOrdinary;
+
+        var judgeRenewalsRemaining = Math.Max(0, judgeRenewalsMax - judgeRenewalsUsed);
         var chamberExtensionsRemaining = Math.Max(0, LegalRules.MaxChamberOfAccusationExtensions - chamberExtensionsUsed);
 
-        var canRequestJudgeRenewal = qualifiesExtendedDetention && judgeRenewalsRemaining > 0;
-        var canRequestChamberExtension =
-            transnationalRequiresForensicOrCrossBorder &&
-            judgeRenewalsRemaining == 0 &&
-            chamberExtensionsRemaining > 0;
+        // Art. 204 grants renewals/extensions to any felony; it is not
+        // gated by crime type. See LegalRules.MaxChamberOfAccusationExtensions
+        // for the open question around Art. 205's additional scope.
+        var canRequestJudgeRenewal = judgeRenewalsRemaining > 0;
+        var canRequestChamberExtension = judgeRenewalsRemaining == 0 && chamberExtensionsRemaining > 0;
 
         var remaining = active.PeriodEnd - asOf;
         var periodLength = active.PeriodEnd - active.PeriodStart;
@@ -135,7 +146,7 @@ public static class DetentionEngine
         CurrentPeriodEnd: null,
         TimeRemaining: null,
         JudgeRenewalsUsed: 0,
-        JudgeRenewalsRemaining: LegalRules.MaxJudgeRenewals,
+        JudgeRenewalsRemaining: LegalRules.MaxJudgeRenewalsOrdinary,
         ChamberExtensionsUsed: 0,
         ChamberExtensionsRemaining: LegalRules.MaxChamberOfAccusationExtensions,
         CanRequestJudgeRenewal: false,

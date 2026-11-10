@@ -77,12 +77,12 @@ public static class MockDataSeeder
                 Description = severe ? "تمويل جماعة إرهابية" : "تبييض أموال",
                 LegalBasis = severe ? "المادة 87 مكرر 4 - قانون العقوبات" : "المادة 389 مكرر - قانون العقوبات",
                 SeverityBand = severe ? "جناية مشددة" : "جناية",
-                QualifiesExtendedDetention = severe,
+                IsAggravatedFelony = severe,
             });
 
             if (custodyStatus == Models.CustodyStatus.Detained)
             {
-                SeedDetentionChain(defendantRepo, defendant, random, now);
+                SeedDetentionChain(defendantRepo, defendant, random, now, severe);
             }
 
             if (custodyStatus == Models.CustodyStatus.JudicialControl)
@@ -124,7 +124,7 @@ public static class MockDataSeeder
         return seededCase;
     }
 
-    private static void SeedDetentionChain(DefendantRepository repo, Defendant defendant, Random random, DateTimeOffset now)
+    private static void SeedDetentionChain(DefendantRepository repo, Defendant defendant, Random random, DateTimeOffset now, bool isAggravatedFelony)
     {
         var start = now.AddMonths(-random.Next(1, 14));
         repo.AddDetentionRecord(new DetentionRecordEntity
@@ -140,7 +140,8 @@ public static class MockDataSeeder
         });
 
         var cursor = start + LegalRules.FelonyBaseDetentionTerm;
-        var renewals = random.Next(0, LegalRules.MaxJudgeRenewals + 1);
+        var maxRenewals = isAggravatedFelony ? LegalRules.MaxJudgeRenewalsAggravated : LegalRules.MaxJudgeRenewalsOrdinary;
+        var renewals = random.Next(0, maxRenewals + 1);
         for (var i = 0; i < renewals && cursor < now; i++)
         {
             repo.AddDetentionRecord(new DetentionRecordEntity

@@ -131,8 +131,8 @@ public partial class LegalCaseViewModel : ObservableObject
                     r.DecidedAt))
                 .ToList();
 
-            var qualifies = charges.Any(ch => ch.QualifiesExtendedDetention);
-            var assessment = DetentionEngine.Assess(detentionRecords, qualifies, c.IsTransnational, now);
+            var isAggravated = charges.Any(ch => ch.IsAggravatedFelony);
+            var assessment = DetentionEngine.Assess(detentionRecords, isAggravated, now);
 
             var row = new DefendantRow(defendant, assessment, this)
             {

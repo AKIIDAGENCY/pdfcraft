@@ -19,7 +19,7 @@ public class DetentionEngineTests
     [Fact]
     public void NoRecords_IsNotDetained()
     {
-        var result = DetentionEngine.Assess(Array.Empty<DetentionRecord>(), true, true, Jan1);
+        var result = DetentionEngine.Assess(Array.Empty<DetentionRecord>(), isAggravatedFelony: true, Jan1);
 
         Assert.Equal(DetentionAlertLevel.NotDetained, result.AlertLevel);
         Assert.Null(result.CurrentPeriodEnd);
@@ -34,7 +34,7 @@ public class DetentionEngineTests
             new DetentionRecord(DetentionRecordType.Release, Jan1.AddDays(30), Jan1.AddDays(30), Jan1.AddDays(30)),
         };
 
-        var result = DetentionEngine.Assess(records, true, true, Jan1.AddDays(31));
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: true, Jan1.AddDays(31));
 
         Assert.Equal(DetentionAlertLevel.NotDetained, result.AlertLevel);
     }
@@ -44,7 +44,7 @@ public class DetentionEngineTests
     {
         var records = new[] { Deposit(Jan1) };
 
-        var result = DetentionEngine.Assess(records, true, true, Jan1.AddDays(10));
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, Jan1.AddDays(10));
 
         Assert.Equal(DetentionAlertLevel.Green, result.AlertLevel);
         Assert.Equal(Jan1 + LegalRules.FelonyBaseDetentionTerm, result.CurrentPeriodEnd);
@@ -57,7 +57,7 @@ public class DetentionEngineTests
         // 120-day base term: orange starts at 25% of 120 days = 30 days remaining.
         var asOf = Jan1 + LegalRules.FelonyBaseDetentionTerm - TimeSpan.FromDays(20);
 
-        var result = DetentionEngine.Assess(records, true, true, asOf);
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, asOf);
 
         Assert.Equal(DetentionAlertLevel.Orange, result.AlertLevel);
     }
@@ -68,7 +68,7 @@ public class DetentionEngineTests
         var records = new[] { Deposit(Jan1) };
         var asOf = Jan1 + LegalRules.FelonyBaseDetentionTerm - TimeSpan.FromDays(LegalRules.RedAlertRemainingDays - 1);
 
-        var result = DetentionEngine.Assess(records, true, true, asOf);
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, asOf);
 
         Assert.Equal(DetentionAlertLevel.Red, result.AlertLevel);
     }
@@ -79,75 +79,104 @@ public class DetentionEngineTests
         var records = new[] { Deposit(Jan1) };
         var asOf = Jan1 + LegalRules.FelonyBaseDetentionTerm + TimeSpan.FromDays(1);
 
-        var result = DetentionEngine.Assess(records, true, true, asOf);
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, asOf);
 
         Assert.Equal(DetentionAlertLevel.Expired, result.AlertLevel);
     }
 
     [Fact]
-    public void JudgeCanRenewUpToThreeTimes_ThenMustStop_Art204()
+    public void OrdinaryFelony_JudgeCanRenewTwice_ThenMustStop_Art204Para1()
     {
         var start = Jan1;
         var records = new List<DetentionRecord> { Deposit(start) };
         start += LegalRules.FelonyBaseDetentionTerm;
 
-        for (var i = 0; i < LegalRules.MaxJudgeRenewals; i++)
+        for (var i = 0; i < LegalRules.MaxJudgeRenewalsOrdinary; i++)
         {
             records.Add(JudgeRenewal(start));
             start += LegalRules.RenewalStepLength;
         }
 
-        var result = DetentionEngine.Assess(records, qualifiesExtendedDetention: true,
-            transnationalRequiresForensicOrCrossBorder: false, asOf: records[0].PeriodStart.AddDays(1));
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, asOf: records[0].PeriodStart.AddDays(1));
 
-        Assert.Equal(LegalRules.MaxJudgeRenewals, result.JudgeRenewalsUsed);
+        Assert.Equal(LegalRules.MaxJudgeRenewalsOrdinary, result.JudgeRenewalsUsed);
         Assert.Equal(0, result.JudgeRenewalsRemaining);
         Assert.False(result.CanRequestJudgeRenewal);
     }
 
     [Fact]
-    public void NonQualifyingCharge_CannotRequestJudgeRenewal_EvenIfSlotsRemain()
+    public void OrdinaryFelony_CannotGetAThirdJudgeRenewal_EvenThoughAggravatedFelonyCouldHave()
     {
-        var records = new[] { Deposit(Jan1) };
+        // Two renewals already used on an ORDINARY felony: no third slot,
+        // unlike an aggravated felony which would still have one left.
+        var records = new List<DetentionRecord>
+        {
+            Deposit(Jan1),
+            JudgeRenewal(Jan1 + LegalRules.FelonyBaseDetentionTerm),
+            JudgeRenewal(Jan1 + LegalRules.FelonyBaseDetentionTerm + LegalRules.RenewalStepLength),
+        };
 
-        var result = DetentionEngine.Assess(records, qualifiesExtendedDetention: false,
-            transnationalRequiresForensicOrCrossBorder: true, asOf: Jan1.AddDays(5));
+        var ordinary = DetentionEngine.Assess(records, isAggravatedFelony: false, Jan1.AddDays(1));
+        var aggravated = DetentionEngine.Assess(records, isAggravatedFelony: true, Jan1.AddDays(1));
 
-        Assert.True(result.JudgeRenewalsRemaining > 0);
+        Assert.False(ordinary.CanRequestJudgeRenewal);
+        Assert.Equal(0, ordinary.JudgeRenewalsRemaining);
+
+        Assert.True(aggravated.CanRequestJudgeRenewal);
+        Assert.Equal(1, aggravated.JudgeRenewalsRemaining);
+    }
+
+    [Fact]
+    public void AggravatedFelony_JudgeCanRenewThreeTimes_ThenMustStop_Art204Para2()
+    {
+        var start = Jan1;
+        var records = new List<DetentionRecord> { Deposit(start) };
+        start += LegalRules.FelonyBaseDetentionTerm;
+
+        for (var i = 0; i < LegalRules.MaxJudgeRenewalsAggravated; i++)
+        {
+            records.Add(JudgeRenewal(start));
+            start += LegalRules.RenewalStepLength;
+        }
+
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: true, asOf: records[0].PeriodStart.AddDays(1));
+
+        Assert.Equal(LegalRules.MaxJudgeRenewalsAggravated, result.JudgeRenewalsUsed);
+        Assert.Equal(0, result.JudgeRenewalsRemaining);
         Assert.False(result.CanRequestJudgeRenewal);
     }
 
     [Fact]
-    public void ChamberExtension_OnlyAvailable_AfterJudgeRenewalsExhausted_Art204_205()
+    public void ChamberExtension_OnlyAvailable_AfterJudgeRenewalsExhausted_Art204()
     {
         var records = new List<DetentionRecord> { Deposit(Jan1) };
 
-        // Only 1 of 3 judge renewals used — chamber extension must not be offered yet.
+        // Only 1 of 2 ordinary-felony judge renewals used — chamber extension must not be offered yet.
         records.Add(JudgeRenewal(Jan1 + LegalRules.FelonyBaseDetentionTerm));
 
-        var tooEarly = DetentionEngine.Assess(records, true, true, Jan1.AddDays(5));
+        var tooEarly = DetentionEngine.Assess(records, isAggravatedFelony: false, Jan1.AddDays(5));
         Assert.False(tooEarly.CanRequestChamberExtension);
 
-        // Exhaust the remaining judge renewals.
+        // Exhaust the remaining judge renewal.
         var cursor = Jan1 + LegalRules.FelonyBaseDetentionTerm + LegalRules.RenewalStepLength;
-        for (var i = 1; i < LegalRules.MaxJudgeRenewals; i++)
+        for (var i = 1; i < LegalRules.MaxJudgeRenewalsOrdinary; i++)
         {
             records.Add(JudgeRenewal(cursor));
             cursor += LegalRules.RenewalStepLength;
         }
 
-        var afterExhaustion = DetentionEngine.Assess(records, true, true, Jan1.AddDays(5));
+        var afterExhaustion = DetentionEngine.Assess(records, isAggravatedFelony: false, Jan1.AddDays(5));
         Assert.Equal(0, afterExhaustion.JudgeRenewalsRemaining);
         Assert.True(afterExhaustion.CanRequestChamberExtension);
     }
 
     [Fact]
-    public void ChamberExtension_CapsAtFour_Art205()
+    public void ChamberExtension_CapsAtFour_Art204()
     {
         var records = new List<DetentionRecord> { Deposit(Jan1) };
         var cursor = Jan1 + LegalRules.FelonyBaseDetentionTerm;
 
-        for (var i = 0; i < LegalRules.MaxJudgeRenewals; i++)
+        for (var i = 0; i < LegalRules.MaxJudgeRenewalsOrdinary; i++)
         {
             records.Add(JudgeRenewal(cursor));
             cursor += LegalRules.RenewalStepLength;
@@ -159,26 +188,10 @@ public class DetentionEngineTests
             cursor += LegalRules.RenewalStepLength;
         }
 
-        var result = DetentionEngine.Assess(records, true, true, Jan1.AddDays(5));
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, Jan1.AddDays(5));
 
         Assert.Equal(LegalRules.MaxChamberOfAccusationExtensions, result.ChamberExtensionsUsed);
         Assert.Equal(0, result.ChamberExtensionsRemaining);
-        Assert.False(result.CanRequestChamberExtension);
-    }
-
-    [Fact]
-    public void ChamberExtension_NotOffered_WhenCaseIsNotTransnationalOrForensicPending()
-    {
-        var records = new List<DetentionRecord> { Deposit(Jan1) };
-        var cursor = Jan1 + LegalRules.FelonyBaseDetentionTerm;
-        for (var i = 0; i < LegalRules.MaxJudgeRenewals; i++)
-        {
-            records.Add(JudgeRenewal(cursor));
-            cursor += LegalRules.RenewalStepLength;
-        }
-
-        var result = DetentionEngine.Assess(records, true, transnationalRequiresForensicOrCrossBorder: false, asOf: Jan1.AddDays(5));
-
         Assert.False(result.CanRequestChamberExtension);
     }
 
@@ -192,8 +205,14 @@ public class DetentionEngineTests
         };
 
         var asOf = Jan1 + LegalRules.FelonyBaseDetentionTerm + TimeSpan.FromDays(10);
-        var result = DetentionEngine.Assess(records, true, true, asOf);
+        var result = DetentionEngine.Assess(records, isAggravatedFelony: false, asOf);
 
         Assert.Equal(asOf - Jan1, result.TotalElapsedDetention);
+    }
+
+    [Fact]
+    public void JudicialControlMeasures_HasExactlyTenEntries_Art198()
+    {
+        Assert.Equal(10, LegalRules.JudicialControlMeasures.Count);
     }
 }

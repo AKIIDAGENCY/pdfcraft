@@ -76,7 +76,8 @@ public sealed class Charge
     public string LegalBasis { get; set; } = string.Empty;
     /// <summary>جنحة | جناية | جناية مشددة.</summary>
     public string SeverityBand { get; set; } = "جناية";
-    public bool QualifiesExtendedDetention { get; set; }
+    /// <summary>Punishable by 20+ years, life imprisonment, or death (Art. 204, para. 2) — raises the judge-renewal cap from 2 to 3.</summary>
+    public bool IsAggravatedFelony { get; set; }
 }
 
 public sealed class DetentionRecordEntity
